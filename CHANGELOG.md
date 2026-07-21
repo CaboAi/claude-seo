@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `seo-technical` no longer treats dynamic rendering as a valid setup to verify. Google
+  documents it as a workaround rather than a recommended solution, so the audit step now
+  flags it as technical debt. Adds a rendering-strategy table (SSR / SSG / CSR) and a
+  preferred-framework list so the skill recommends a target state rather than only naming
+  the anti-pattern. Detection logic in `fetch_page.py` is unchanged: identifying dynamic
+  rendering is still useful, it is only the recommendation that was stale.
 - **The Banana cost ledger had the same defect, with no locking at all.**
   `extensions/banana/scripts/cost_tracker.py` read and wrote `~/.banana/costs.json` with
   no file locking on any platform and a non-atomic write. Measured 4 entries lost out of
