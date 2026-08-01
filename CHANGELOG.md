@@ -13,6 +13,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Spend ledger lost concurrent writes (`dataforseo_costs.py`).** The ledger took its
+  file lock twice, once to read and once to write, and released it in between, so two
+  concurrent `log` calls both read the same ledger and the second silently overwrote the
+  first. Measured 3 entries lost out of 20 concurrent writes, with 1 to 3 lost on every
+  repeat run. This is not platform-specific. It matters because `seo-audit` fans out to
+  up to 15 parallel specialists, three of which call DataForSEO and each of which logs
+  after every call, so the ledger under-reported most during the runs that spend the
+  most. One exclusive lock now spans the entire read-modify-write in both `log` and
+  `reset`.
+- **No file locking at all on Windows.** The module set `fcntl = None` when the import
+  failed and then took every unlocked code path, so Windows ran the ledger with no
+  locking whatsoever. Locking now falls back to `msvcrt`, and when neither primitive is
+  available the operation fails loudly rather than proceeding unlocked.
+- **A corrupt ledger silently reset the budget to zero.** The non-atomic
+  `open(..., "w")` write could leave a truncated file if the process died mid-write, and
+  the reader caught `JSONDecodeError` and returned an empty ledger, which the next write
+  then persisted, discarding the whole spend history. Ledger writes are now atomic
+  (tempfile plus `os.replace`, matching the idiom already used in `google_auth.py`), and
+  an unparseable ledger fails closed with the file left in place for inspection.
+- **`CLAUDE_SEO_CONFIG_DIR`** now overrides the config and ledger location, so the new
+  `tests/test_dataforseo_costs.py` concurrency and durability tests run against an
+  isolated ledger instead of the operator's real spend history.
 - The Common-Crawl-only no-score rule is now enforced instead of merely stated. The
   `seo-backlinks` skill said not to produce a numeric health score when only Common Crawl
   data is available, while `skills/seo/references/free-backlink-sources.md` told the agent
