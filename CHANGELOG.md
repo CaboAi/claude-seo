@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- AI crawler claims are now checked against the crawler that actually governs them.
+  `GPTBot` was documented as "ChatGPT web search" in the `seo-geo` crawler table; it is
+  OpenAI's model-training crawler, while `OAI-SearchBot` is what determines ChatGPT
+  Search citability. `Google-Extended` governs Gemini/Vertex training and grounding only
+  and is no longer treated as a Google Search readiness signal (Google Search, AI
+  Overviews, and AI Mode all follow `Googlebot`). Adds a claim-to-bot mapping table (cited
+  to OpenAI's and Google's own crawler docs), rows for `Claude-SearchBot` and
+  `Applebot-Extended`, the missing `OAI-SearchBot` row to the `seo-technical` crawler
+  table, fixes a stale `seo-technical` line that still described `ClaudeBot` as
+  training-only, and requires training access and search citability to be reported as
+  separate findings.
+
 ### Added
 
 - `content_humanize.py` now strips invisible Unicode watermark characters (zero-width
