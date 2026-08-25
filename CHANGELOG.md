@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The Common-Crawl-only no-score rule is now enforced instead of merely stated. The
+  `seo-backlinks` skill said not to produce a numeric health score when only Common Crawl
+  data is available, while `skills/seo/references/free-backlink-sources.md` told the agent
+  to "cap the maximum health score at 70/100" in the same case. The reference gave the more
+  actionable of two contradictory instructions, which is the likely reason the rule was
+  violated in practice. The guidance now agrees across both files, and
+  `validate_backlink_report.py` gains a `source_score_consistency` check that fails a
+  report carrying a number with no scoreable source (Moz, Bing, or DataForSEO), or a
+  `source: not-assessed` finding carrying a score.
 - `preload_check.py` exited 1 on every successful run that scored below a
   hard-coded 75, so `set -e` scripts and CI steps aborted on healthy pages. A
   completed analysis now exits 0; the gate is opt-in through `--fail-under N`.
