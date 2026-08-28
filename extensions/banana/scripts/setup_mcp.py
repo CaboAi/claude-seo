@@ -14,14 +14,13 @@ Usage:
 """
 
 import json
-import sys
 import os
+import sys
 from pathlib import Path
 
 SETTINGS_PATH = Path.home() / ".claude" / "settings.json"
 MCP_NAME = "nanobanana-mcp"
-MCP_PACKAGE = "@ycse/nanobanana-mcp"
-DEFAULT_MODEL = "gemini-3.1-flash-image-preview"
+MCP_PACKAGE = "@ycse/nanobanana-mcp@1.1.1"
 
 
 def load_settings() -> dict:
@@ -51,7 +50,8 @@ def check_setup() -> bool:
         print(f"MCP server '{MCP_NAME}' is configured.")
         print(f"  Package: {MCP_PACKAGE}")
         print(f"  API Key: {masked}")
-        print(f"  Model:   {env.get('NANOBANANA_MODEL', DEFAULT_MODEL)}")
+        model = env.get("NANOBANANA_MODEL")
+        print(f"  Model:   {model if model else 'MCP package default'}")
         return True
     print(f"MCP server '{MCP_NAME}' is NOT configured.")
     return False
@@ -87,16 +87,15 @@ def setup_mcp(api_key: str) -> None:
         "args": ["-y", MCP_PACKAGE],
         "env": {
             "GOOGLE_AI_API_KEY": api_key,
-            "NANOBANANA_MODEL": DEFAULT_MODEL,
         },
     }
 
     save_settings(settings)
     print(f"\nMCP server '{MCP_NAME}' configured successfully!")
     print(f"  Package: {MCP_PACKAGE}")
-    print(f"  Model:   {DEFAULT_MODEL}")
-    print(f"\nRestart Claude Code for changes to take effect.")
-    print(f"Generated images will be saved to: ~/Documents/nanobanana_generated/")
+    print("  Model:   MCP package default")
+    print("\nRestart Claude Code for changes to take effect.")
+    print("Generated images will be saved to: ~/Documents/nanobanana_generated/")
 
 
 def main() -> None:
@@ -136,7 +135,7 @@ def main() -> None:
     if not api_key:
         print("Claude Banana - MCP Setup")
         print("=" * 40)
-        print(f"\nGet your free API key at: https://aistudio.google.com/apikey")
+        print("\nGet your free API key at: https://aistudio.google.com/apikey")
         print()
         try:
             api_key = input("Enter your Google AI API key: ")

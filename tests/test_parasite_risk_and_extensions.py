@@ -7,7 +7,6 @@ Tests for the v2 Checkpoint 5 deliverables:
 
 from __future__ import annotations
 
-import os
 import stat
 import sys
 from pathlib import Path
@@ -20,7 +19,6 @@ if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
 import parasite_risk  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # parasite_risk
@@ -171,7 +169,13 @@ def test_extension_skillmd_has_required_frontmatter(
     assert f"name: {skill_dir}" in head, f"{name}: frontmatter name must be {skill_dir}"
     assert "description:" in head, f"{name}: missing description"
     assert "metadata:" in head, f"{name}: missing metadata block"
-    assert 'version: "2.2.0"' in head, f"{name}: SKILL.md must declare version 2.2.0"
+    import json as _json
+    _expected = _json.loads(
+        (_REPO_ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")
+    )["version"]
+    assert f'version: "{_expected}"' in head, (
+        f"{name}: SKILL.md must declare version {_expected} (from plugin.json)"
+    )
 
 
 # ---------------------------------------------------------------------------

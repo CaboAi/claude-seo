@@ -31,10 +31,31 @@ checks if the file contains schema markup before validating.
 """
 
 import json
+import os
 import re
 import sys
-import os
-from typing import List
+from typing import Any, List
+
+BRACKET_PLACEHOLDERS = (
+    "[Business Name]",
+    "[City]",
+    "[State]",
+    "[Phone]",
+    "[Address]",
+    "[Your",
+    "[INSERT",
+    "[URL]",
+    "[Email]",
+)
+BARE_PLACEHOLDER_RE = re.compile(r"\bREPLACE(?:_[A-Z]+)*\b")
+
+
+def _configure_utf8() -> None:
+    """Keep hook diagnostics printable on legacy Windows console encodings."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure:
+            reconfigure(encoding="utf-8", errors="replace")
 
 
 def validate_jsonld(content: str) -> List[str]:
@@ -56,45 +77,49 @@ def validate_jsonld(content: str) -> List[str]:
 
         if isinstance(data, list):
             for item in data:
-                errors.extend(_validate_schema_object(item, i))
+                if isinstance(item, dict):
+                    errors.extend(_validate_schema_object(item, i))
+                else:
+                    errors.append(f"Block {i}: JSON-LD list members must be objects")
         elif isinstance(data, dict):
             errors.extend(_validate_schema_object(data, i))
+        else:
+            errors.append(f"Block {i}: JSON-LD root must be an object or list")
 
     return errors
 
 
-def _validate_schema_object(obj: dict, block_num: int) -> List[str]:
-    """Validate a single schema object."""
+def _validate_schema_object(
+    obj: dict[str, Any], block_num: int, *, inherited_context: bool = False
+) -> List[str]:
+    """Validate one schema node, including members of a top-level ``@graph``."""
     errors = []
     prefix = f"Block {block_num}"
 
     # Check @context
-    if "@context" not in obj:
+    if "@context" not in obj and not inherited_context:
         errors.append(f"{prefix}: Missing @context")
-    elif obj["@context"] not in ("https://schema.org", "http://schema.org"):
+    elif "@context" in obj and obj["@context"] not in (
+        "https://schema.org",
+        "http://schema.org",
+    ):
         errors.append(f"{prefix}: @context should be 'https://schema.org'")
 
-    # Check @type
-    if "@type" not in obj:
+    graph = obj.get("@graph")
+    has_graph = isinstance(graph, list)
+
+    # A graph container does not need its own @type. Its object members do.
+    if "@type" not in obj and not has_graph:
         errors.append(f"{prefix}: Missing @type")
 
     # Check for placeholder text
-    placeholders = [
-        "[Business Name]",
-        "[City]",
-        "[State]",
-        "[Phone]",
-        "[Address]",
-        "[Your",
-        "[INSERT",
-        "REPLACE",
-        "[URL]",
-        "[Email]",
-    ]
-    text = json.dumps(obj)
-    for p in placeholders:
+    placeholder_scope = {key: value for key, value in obj.items() if key != "@graph"}
+    text = json.dumps(placeholder_scope, ensure_ascii=False)
+    for p in BRACKET_PLACEHOLDERS:
         if p.lower() in text.lower():
             errors.append(f"{prefix}: Contains placeholder text: {p}")
+    for placeholder in BARE_PLACEHOLDER_RE.findall(text):
+        errors.append(f"{prefix}: Contains placeholder text: {placeholder}")
 
     # Check for deprecated types
     schema_type = obj.get("@type", "")
@@ -112,22 +137,60 @@ def _validate_schema_object(obj: dict, block_num: int) -> List[str]:
 
     # Check for restricted types used incorrectly.
     # FAQPage is intentionally NOT flagged: Google retired FAQ rich results for
-    # all sites (May 7, 2026), but the markup still aids AI Mode / AI Overviews
-    # entity resolution, so it is valid to ship. See skills/seo-schema/SKILL.md.
+    # all sites (May 7, 2026), but FAQPage remains a valid Schema.org type.
+    # This project makes no claim of a confirmed AI or ranking benefit.
     restricted: dict = {}
     if schema_type in restricted:
         errors.append(f"{prefix}: @type '{schema_type}' is {restricted[schema_type]}; verify site qualifies")
 
+    if "@graph" in obj:
+        if not isinstance(graph, list):
+            errors.append(f"{prefix}: @graph must be a list")
+        else:
+            context_is_inherited = inherited_context or "@context" in obj
+            for index, item in enumerate(graph, 1):
+                if not isinstance(item, dict):
+                    errors.append(
+                        f"{prefix}: @graph member {index} must be an object"
+                    )
+                    continue
+                errors.extend(
+                    _validate_schema_object(
+                        item,
+                        block_num,
+                        inherited_context=context_is_inherited,
+                    )
+                )
+
     return errors
 
 
+def _resolve_filepath():
+    """File path from argv (exec-form template) or the stdin hook-event JSON.
+
+    Claude Code's documented hook contract delivers the event as JSON on stdin;
+    the argv template is kept for harnesses that substitute it. Whichever yields
+    an existing file wins.
+    """
+    if len(sys.argv) > 1 and os.path.isfile(sys.argv[1]):
+        return sys.argv[1]
+    try:
+        if not sys.stdin.isatty():
+            raw = sys.stdin.read()
+            if raw.strip():
+                event = json.loads(raw)
+                fp = (event.get("tool_input") or {}).get("file_path")
+                if fp and os.path.isfile(fp):
+                    return fp
+    except (OSError, ValueError):
+        pass
+    return None
+
+
 def main():
-    if len(sys.argv) < 2:
-        sys.exit(0)
-
-    filepath = sys.argv[1]
-
-    if not os.path.isfile(filepath):
+    _configure_utf8()
+    filepath = _resolve_filepath()
+    if not filepath:
         sys.exit(0)
 
     # Only validate HTML-like files
@@ -146,7 +209,7 @@ def main():
         sys.exit(0)
 
     try:
-        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+        with open(filepath, "r", encoding="utf-8", errors="replace") as f:
             content = f.read()
     except (OSError, IOError):
         sys.exit(0)

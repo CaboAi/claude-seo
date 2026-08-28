@@ -2,8 +2,9 @@
 """
 Google Cloud Natural Language API - Entity, sentiment, and content analysis.
 
-Enhances E-E-A-T scoring with NLP entity coverage, sentiment analysis,
-and Google's own content classification taxonomy.
+Adds NLP entity coverage, sentiment analysis, and content classification
+as internal content-analysis enrichment only. It is unrelated to Google
+Search ranking or official E-E-A-T scoring.
 
 Usage:
     python nlp_analyze.py --text "Your content here" --json
@@ -348,13 +349,13 @@ def main():
 
         categories = result.get("categories", [])
         if categories:
-            print(f"\nContent Categories:")
+            print("\nContent Categories:")
             for c in categories:
                 print(f"  {c['name']} ({c['confidence']:.1%})")
 
         moderation = result.get("moderation", [])
         if moderation:
-            print(f"\nModeration Flags:")
+            print("\nModeration Flags:")
             for m in moderation:
                 print(f"  {m['name']} ({m['confidence']:.1%})")
 

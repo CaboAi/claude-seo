@@ -238,7 +238,9 @@ def _save_oauth_token(token_data: dict):
     # os.fdopen takes ownership of fd — it closes the fd whether the
     # write succeeds or raises, so there is no fd-leak path here.
     try:
-        os.fchmod(fd, 0o600)
+        fchmod = getattr(os, "fchmod", None)
+        if fchmod is not None:
+            fchmod(fd, 0o600)
     except OSError:
         pass  # FS may not support fchmod (e.g. some Windows filesystems)
     with os.fdopen(fd, "w") as f:
@@ -655,13 +657,10 @@ def detect_tier() -> dict:
     has_api_key = bool(config.get("api_key"))
     has_authenticated = False
     has_ga4 = False
-    auth_method = None
-
     # Check OAuth token
     token_data = _load_oauth_token()
     if token_data and token_data.get("access_token"):
         has_authenticated = True
-        auth_method = "oauth_token"
 
     # Check service account
     if not has_authenticated:
@@ -674,7 +673,6 @@ def detect_tier() -> dict:
                         sa_data = json.load(f)
                     if "client_email" in sa_data and "private_key" in sa_data:
                         has_authenticated = True
-                        auth_method = "service_account"
                 except (json.JSONDecodeError, IOError):
                     pass
 
@@ -899,7 +897,7 @@ def main():
     else:
         print(f"Credential Tier: {tier_info['tier']} -- {tier_info['description']}")
         if tier_info["missing"]:
-            print(f"Run --setup for configuration instructions.")
+            print("Run --setup for configuration instructions.")
 
 
 if __name__ == "__main__":

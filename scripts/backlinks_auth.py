@@ -26,7 +26,7 @@ _SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
 if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
 try:
-    from url_safety import validate_url
+    import url_safety  # noqa: F401
 except ImportError as _import_exc:
     # Hard fail: a private-IP/loopback fallback that omits SSRF checks is
     # worse than no validation at all. The previous fallback shipped in
@@ -225,7 +225,7 @@ def detect_tier() -> dict:
                 "Moz DA/PA/Spam Score (any domain)",
                 "Moz referring domains and anchors",
                 "Bing inbound links (verified sites)",
-                "Bing competitor comparison",
+                "Bing comparison between registered properties",
                 "Common Crawl domain-level graph",
                 "Backlink verification crawler",
             ],
@@ -242,7 +242,7 @@ def detect_tier() -> dict:
                 "Backlink verification crawler",
             ],
             "missing": (
-                "Add Bing Webmaster API key for competitor comparison. "
+                "Add Bing Webmaster API key for registered-property link data. "
                 "Free at https://www.bing.com/webmasters"
             ),
         }

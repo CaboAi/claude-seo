@@ -2,7 +2,7 @@
 """
 LCP subparts breakdown via CrUX API.
 
-Since 2024 CrUX has exposed the four LCP sub-metrics:
+Since January 2025 CrUX has exposed the four LCP sub-metrics:
   - largest_contentful_paint_image_time_to_first_byte
   - largest_contentful_paint_image_resource_load_delay
   - largest_contentful_paint_image_resource_load_duration
@@ -28,16 +28,14 @@ import argparse
 import json
 import os
 import sys
-
-import urllib.request
 import urllib.error
+import urllib.request
 
 _SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
 if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
-from url_safety import URLSafetyError, validate_url_strict  # noqa: E402
 from google_auth import get_api_key, google_api_key_headers, redact_google_api_key  # noqa: E402
-
+from url_safety import URLSafetyError, validate_url_strict  # noqa: E402
 
 CRUX_ENDPOINT = "https://chromeuxreport.googleapis.com/v1/records:queryRecord"
 
