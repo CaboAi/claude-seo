@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `content_humanize.py` now strips invisible Unicode watermark characters (zero-width
+  codepoints, directional marks/overrides, tag characters) and normalizes exotic spaces
+  before the AI-phrasing pass, which those codepoints otherwise defeat by breaking `\b`
+  word boundaries. Emoji sequences (ZWJ, variation selectors) are preserved. The
+  `seo-content` skill documents the new triggers and the scope limits (statistical
+  watermarks are untouched; intended for the user's own drafts).
+
 ## [2.2.6] - 2026-09-10
 
 ### Security
