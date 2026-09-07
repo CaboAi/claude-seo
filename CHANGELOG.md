@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `preload_check.py` exited 1 on every successful run that scored below a
+  hard-coded 75, so `set -e` scripts and CI steps aborted on healthy pages. A
+  completed analysis now exits 0; the gate is opt-in through `--fail-under N`.
+  Exit 2 for a URL refused by url_safety is unchanged. (#281)
 - CI now runs the full test suite on Windows and macOS, not just the three
   platform-neutral modules. The tests that assert POSIX mode bits skip on
   Windows instead of failing.
