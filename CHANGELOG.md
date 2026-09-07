@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Every live fetch failed behind an HTTP proxy on loopback
+  (`HTTPS_PROXY=http://127.0.0.1:<port>`, the usual sandbox and CI setup): the
+  pinned resolver refused to resolve the proxy's own address as non-public. The
+  proxy host `requests` selects for the URL is now exempt from that check, and
+  only that host. (#280)
+
 ## [2.2.6] - 2026-09-10
 
 ### Security
