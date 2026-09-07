@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `consistency_check.py` reported every FLOW-locked prompt file as a hash
+  mismatch on a stock Windows clone: Git for Windows checks the files out with
+  CRLF (`core.autocrlf=true`) while the lock hashes LF content. The check now
+  folds CRLF before hashing, so the lock only fails on real content changes.
 - `url_safety.is_safe_ip` accepted the RFC 6598 shared address space
   (100.64.0.0/10), which Python's `ipaddress` does not count as private. Alibaba
   Cloud serves instance metadata at 100.100.100.200, so a crafted URL or DNS
