@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `fetch_page.py --json` exposes full response metadata and content for raw and
+  rendered fetches, including structured fetch errors (#282).
+
 ## [2.2.6] - 2026-09-10
 
 ### Security
