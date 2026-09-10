@@ -76,7 +76,7 @@ def test_build_cmd_passes_config_file_and_documented_flags(tmp_path):
     )
     assert cmd[0:2] == ["npx", "--yes"]
     assert "--site" in cmd and "https://example.com" in cmd
-    assert "--device" in cmd and "desktop" in cmd
+    assert "--desktop" in cmd and "--device" not in cmd
     assert "--config-file" in cmd
     assert str(config_path) in cmd
     assert "--output-path" in cmd and str(tmp_path) in cmd

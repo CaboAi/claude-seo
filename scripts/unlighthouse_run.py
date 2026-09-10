@@ -113,7 +113,7 @@ def build_cmd(target: str, *, device: str, out_dir: Path, config_path: Path) -> 
     return [
         "npx", "--yes", "--package", UNLIGHTHOUSE_PIN, "unlighthouse-ci",
         "--site", target,
-        "--device", device,
+        "--desktop" if device == "desktop" else "--mobile",
         "--output-path", str(out_dir),
         "--config-file", str(config_path),
         # The real flag is `--build-static` (ci.ts); the CLI declares it

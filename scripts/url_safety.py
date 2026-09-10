@@ -707,7 +707,23 @@ def _pin_dns(
             )
 
         if host and host.lower() in exempt_hosts:
-            return original_getaddrinfo(host, requested_port, *args, **kwargs)
+            result = original_getaddrinfo(host, requested_port, *args, **kwargs)
+            # An exempt entry that is an IP literal cannot change between the
+            # pre-flight validation and this lookup. A DNS name can (rebinding),
+            # so its answer is re-checked here; an exempt proxy that now resolves
+            # to a non-public address is refused rather than trusted.
+            try:
+                ipaddress.ip_address(host.strip("[]"))
+            except ValueError:
+                for info in result:
+                    sockaddr = info[4]
+                    if sockaddr and not is_safe_ip(sockaddr[0]):
+                        raise socket.gaierror(
+                            socket.EAI_FAIL,
+                            f"url_safety: exempt proxy host {host} resolved to "
+                            f"non-public IP {sockaddr[0]} after validation",
+                        )
+            return result
 
         # Branch 2: every OTHER hostname (redirect target, embedded
         # subresource, library bookkeeping) gets resolved by the real

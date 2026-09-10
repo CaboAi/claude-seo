@@ -1101,3 +1101,36 @@ def test_allowlist_does_not_bypass_authority_confusion_checks(monkeypatch) -> No
     assert url_safety.validate_url("http://user@localhost:3000/") is False
     assert url_safety.validate_url("http://localhost:3000\\@evil.example/") is False
     assert url_safety.validate_url("ftp://localhost:3000/") is False
+
+
+def test_pin_dns_rechecks_a_dns_named_exempt_proxy_at_resolve_time() -> None:
+    """A proxy validated as public must not be trusted if it later resolves to a
+    private or metadata address (DNS rebinding between validation and use)."""
+    original_getaddrinfo = socket.getaddrinfo
+
+    def rebinding_getaddrinfo(host, port, *args, **kwargs):
+        if host == "proxy.example":
+            return _addrinfo("169.254.169.254", port or 3128)
+        return original_getaddrinfo(host, port, *args, **kwargs)
+
+    with patch.object(url_safety.socket, "getaddrinfo", side_effect=rebinding_getaddrinfo):
+        with url_safety._pin_dns(
+            "pinned.example", "8.8.8.8", 443, exempt_hosts=frozenset({"proxy.example"})
+        ):
+            with pytest.raises(socket.gaierror, match="non-public IP"):
+                socket.getaddrinfo("proxy.example", 3128)
+
+
+def test_pin_dns_lets_a_dns_named_exempt_proxy_resolve_to_public() -> None:
+    original_getaddrinfo = socket.getaddrinfo
+
+    def public_getaddrinfo(host, port, *args, **kwargs):
+        if host == "proxy.example":
+            return _addrinfo("93.184.216.34", port or 3128)
+        return original_getaddrinfo(host, port, *args, **kwargs)
+
+    with patch.object(url_safety.socket, "getaddrinfo", side_effect=public_getaddrinfo):
+        with url_safety._pin_dns(
+            "pinned.example", "8.8.8.8", 443, exempt_hosts=frozenset({"proxy.example"})
+        ):
+            assert socket.getaddrinfo("proxy.example", 3128)[0][4][0] == "93.184.216.34"

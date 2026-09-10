@@ -82,19 +82,28 @@ def _restrict_to_current_user_windows(path: str) -> None:
     """
     if os.name != "nt":
         return
+    user = os.environ.get("USERNAME", "").strip()
+    if not user:
+        print(
+            f"Warning: USERNAME is not set; could not restrict {path} to the current user",
+            file=sys.stderr,
+        )
+        return
     try:
-        subprocess.run(
-            [
-                "icacls",
-                path,
-                "/inheritance:r",
-                "/grant:r",
-                f"{os.environ.get('USERNAME', '')}:F",
-            ],
+        result = subprocess.run(
+            ["icacls", path, "/inheritance:r", "/grant:r", f"{user}:F"],
             check=False,
             capture_output=True,
+            text=True,
             timeout=10,
         )
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout or "").strip()
+            print(
+                f"Warning: icacls could not restrict {path} to {user} "
+                f"(exit {result.returncode}): {detail}",
+                file=sys.stderr,
+            )
     except Exception as exc:  # best-effort hardening only; never fatal
         print(
             f"Warning: could not restrict {path} to the current user via icacls: {exc}",

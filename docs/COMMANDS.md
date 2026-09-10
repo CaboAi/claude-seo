@@ -6,7 +6,7 @@ All Claude SEO commands start with `/seo` followed by a subcommand.
 
 ## Page-fetching script
 
-Use `./bin/claude-seo run fetch_page.py https://example.com --json` for structured
+Use `"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run fetch_page.py https://example.com --json` for structured
 retrieval. Both the raw path (default, `--render never`) and the rendered path
 (`--render auto` or `--render always`) emit JSON through the same
 `render_page._json_summary` contract, so the two share one key set: `url`,

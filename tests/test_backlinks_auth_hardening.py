@@ -121,6 +121,7 @@ def test_windows_branch_invokes_icacls_with_current_user(monkeypatch):
 
 
 def test_windows_branch_swallows_subprocess_failure_with_warning(monkeypatch, capsys):
+    monkeypatch.setenv("USERNAME", "test-user")
     def raising_run(*args, **kwargs):
         raise FileNotFoundError("icacls not found")
 
@@ -152,3 +153,13 @@ def test_save_config_calls_windows_restriction_when_os_name_is_nt(tmp_path, monk
     backlinks_auth.save_config({"moz_api_key": "x"})
 
     assert calls == [str(config_path)]
+
+
+def test_windows_branch_skips_icacls_when_username_is_empty(monkeypatch, capsys):
+    monkeypatch.setattr(backlinks_auth.os, "name", "nt")
+    monkeypatch.delenv("USERNAME", raising=False)
+    called = []
+    monkeypatch.setattr(backlinks_auth.subprocess, "run", lambda *a, **k: called.append(a))
+    backlinks_auth._restrict_to_current_user_windows(r"C:\Users\x\.claude-seo.json")
+    assert not called, "icacls must not run with an empty grantee"
+    assert "USERNAME is not set" in capsys.readouterr().err

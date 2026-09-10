@@ -61,7 +61,11 @@ BARE_PLACEHOLDER_RE = re.compile(r"\bREPLACE(?:_[A-Z]+)*\b")
 # a templated nonce) truncated the tag early and fed the remainder of the
 # attributes plus the real body to the JSON parser as garbage. Treating a quoted
 # span as atomic keeps an embedded ``>`` from ending the tag prematurely.
-_ATTRS_RE = r'(?:"[^"]*"|\'[^\']*\'|[^">])*'
+# The fallback class excludes both quote characters: if it matched an
+# apostrophe, the alternation would be ambiguous and a tag with many
+# apostrophes and no closing tag would backtrack exponentially, hanging the
+# blocking hook.
+_ATTRS_RE = r'(?:"[^"]*"|\'[^\']*\'|[^"\'>])*'
 SCRIPT_TAG_RE = re.compile(
     r"<script\b(" + _ATTRS_RE + r")>(.*?)</script\s*>", re.DOTALL | re.IGNORECASE
 )
