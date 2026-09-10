@@ -13,7 +13,9 @@ live Ahrefs data.
 
 The installer:
 
-1. Verifies Python 3 + Node 18+ are on `$PATH`.
+1. Verifies Node 18+ is on `$PATH` (the `.sh` installer also verifies Python 3,
+   used only for its `~/.claude.json` merge script; the `.ps1` installer
+   merges natively with `ConvertTo-Json` and needs no Python).
 2. Prompts for your Ahrefs API token (input is hidden).
 3. Pre-warms the `@ahrefs/mcp@0.0.11` npm package via `npx --yes` so the first
    MCP call doesn't spend 10+ seconds downloading.
