@@ -37,8 +37,8 @@ Write-Host "✓ Installed skill: $SkillTarget"
 & npx --yes --package=@ahrefs/mcp@0.0.11 mcp --help *> $null
 
 # Merge ~/.claude.json.
-$settingsContent = if (Test-Path $McpConfigJson) { Get-Content $McpConfigJson -Raw | ConvertFrom-Json } else { @{} }
-if (-not $settingsContent.mcpServers) { $settingsContent | Add-Member -NotePropertyName mcpServers -NotePropertyValue @{} -Force }
+$settingsContent = if (Test-Path $McpConfigJson) { Get-Content $McpConfigJson -Raw | ConvertFrom-Json } else { [pscustomobject]@{} }
+if (-not $settingsContent.mcpServers) { $settingsContent | Add-Member -NotePropertyName mcpServers -NotePropertyValue ([pscustomobject]@{}) -Force }
 $settingsContent.mcpServers | Add-Member -NotePropertyName 'ahrefs' -NotePropertyValue @{
     command = 'npx'
     args = @('--yes', '--package=@ahrefs/mcp@0.0.11', 'mcp')
@@ -50,7 +50,10 @@ $settingsContent.mcpServers | Add-Member -NotePropertyName 'ahrefs' -NotePropert
 # -Depth 100 (not the ConvertTo-Json default of 2) so an existing
 # ~/.claude.json with deeply nested config round-trips intact.
 $TempConfigJson = Join-Path (Split-Path -Parent $McpConfigJson) ".claude.json.$([guid]::NewGuid().ToString('N')).tmp"
-$settingsContent | ConvertTo-Json -Depth 100 | Set-Content $TempConfigJson -Encoding UTF8
+$jsonText = $settingsContent | ConvertTo-Json -Depth 100
+# Write without a byte-order mark: on Windows PowerShell 5.1, Set-Content -Encoding UTF8
+# emits a BOM and Node's JSON.parse rejects it, which would make ~/.claude.json unreadable.
+[System.IO.File]::WriteAllText($TempConfigJson, $jsonText, (New-Object System.Text.UTF8Encoding $false))
 Move-Item -Path $TempConfigJson -Destination $McpConfigJson -Force
 Write-Host "Wrote mcpServers.ahrefs to $McpConfigJson"
 

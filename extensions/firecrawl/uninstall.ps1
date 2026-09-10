@@ -23,7 +23,10 @@ if (Test-Path $McpConfigFile) {
         # 10) so an existing ~/.claude.json with deeply nested config
         # round-trips intact.
         $TempConfigFile = Join-Path (Split-Path -Parent $McpConfigFile) ".claude.json.$([guid]::NewGuid().ToString('N')).tmp"
-        $settings | ConvertTo-Json -Depth 100 | Set-Content $TempConfigFile -Encoding UTF8
+        $jsonText = $settings | ConvertTo-Json -Depth 100
+# Write without a byte-order mark: on Windows PowerShell 5.1, Set-Content -Encoding UTF8
+# emits a BOM and Node's JSON.parse rejects it, which would make ~/.claude.json unreadable.
+[System.IO.File]::WriteAllText($TempConfigFile, $jsonText, (New-Object System.Text.UTF8Encoding $false))
         Move-Item -Path $TempConfigFile -Destination $McpConfigFile -Force
         Write-Host "v Removed MCP server from ~/.claude.json" -ForegroundColor Green
     }

@@ -128,3 +128,20 @@ def test_main_rejects_batches_over_100_domains_without_a_network_call(
     err = capsys.readouterr().err
     assert "101" in err
     assert "max 100" in err
+
+
+def test_upstream_error_body_never_echoes_the_key(monkeypatch):
+    """A 500 whose body repeats the key must not leak it into the result."""
+    import keywordseverywhere_api as ke
+
+    class _Resp:
+        status_code = 500
+        text = "upstream error: API-OPR opr_live_SECRET123 rejected"
+
+        def json(self):
+            raise ValueError("not json")
+
+    monkeypatch.setattr(ke, "safe_requests_get", lambda *a, **k: _Resp())
+    result = ke.get_rank(["example.com"], api_key="opr_live_SECRET123")
+    assert "opr_live_SECRET123" not in str(result)
+    assert "<redacted>" in str(result.get("error", ""))

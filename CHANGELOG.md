@@ -43,6 +43,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `metadata_template.py`, added in v2.3.0, was not registered in the launcher's
+  `ALLOWED_CORE_SCRIPTS`, so `claude-seo run metadata_template.py` was refused for
+  `/seo page` and `/seo programmatic`. Registered, with a test that every script an
+  instruction file invokes is allowlisted.
+- The dataforseo, ahrefs and firecrawl PowerShell installers created `mcpServers` as
+  a hashtable, which `ConvertTo-Json` serialised as `{}` when `~/.claude.json` was
+  missing or had no `mcpServers` yet, silently dropping the server entry; they now
+  create an object. They also wrote the file with a byte-order mark on Windows
+  PowerShell 5.1, which Node's JSON parser rejects; the write is BOM-free now.
 - `_run_checked` discarded a failing setup stage's stderr/stdout, so a broken
   venv or pip install reported only "failed with exit code 1" with nothing
   actionable. It now surfaces a bounded tail of the child's own output, pip is

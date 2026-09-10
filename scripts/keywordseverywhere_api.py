@@ -93,6 +93,10 @@ def get_rank(domains: list, api_key: str) -> dict:
             try:
                 err_body = response.json()
                 err_msg = err_body.get("message") or err_body.get("error") or response.text
+
+                # Never echo the key back through an upstream error body.
+
+                err_msg = str(err_msg).replace(api_key, "<redacted>")[:500]
             except ValueError:
                 err_msg = response.text or f"HTTP {response.status_code}"
             return {

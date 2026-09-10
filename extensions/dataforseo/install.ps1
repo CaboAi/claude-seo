@@ -99,8 +99,8 @@ Copy-Item -Force "$SourceDir\field-config.json" $FieldConfigPath
 # Merge MCP config into ~/.claude.json
 Write-Host "→ Configuring MCP server..." -ForegroundColor Yellow
 
-$settingsContent = if (Test-Path $McpConfigFile) { Get-Content $McpConfigFile -Raw | ConvertFrom-Json } else { @{} }
-if (-not $settingsContent.mcpServers) { $settingsContent | Add-Member -NotePropertyName mcpServers -NotePropertyValue @{} -Force }
+$settingsContent = if (Test-Path $McpConfigFile) { Get-Content $McpConfigFile -Raw | ConvertFrom-Json } else { [pscustomobject]@{} }
+if (-not $settingsContent.mcpServers) { $settingsContent | Add-Member -NotePropertyName mcpServers -NotePropertyValue ([pscustomobject]@{}) -Force }
 $settingsContent.mcpServers | Add-Member -NotePropertyName 'dataforseo' -NotePropertyValue @{
     command = 'npx'
     args = @('-y', 'dataforseo-mcp-server@2.8.10')
@@ -117,7 +117,10 @@ $settingsContent.mcpServers | Add-Member -NotePropertyName 'dataforseo' -NotePro
 # -Depth 100 (not the ConvertTo-Json default of 2) so an existing
 # ~/.claude.json with deeply nested config round-trips intact.
 $TempConfigFile = Join-Path (Split-Path -Parent $McpConfigFile) ".claude.json.$([guid]::NewGuid().ToString('N')).tmp"
-$settingsContent | ConvertTo-Json -Depth 100 | Set-Content $TempConfigFile -Encoding UTF8
+$jsonText = $settingsContent | ConvertTo-Json -Depth 100
+# Write without a byte-order mark: on Windows PowerShell 5.1, Set-Content -Encoding UTF8
+# emits a BOM and Node's JSON.parse rejects it, which would make ~/.claude.json unreadable.
+[System.IO.File]::WriteAllText($TempConfigFile, $jsonText, (New-Object System.Text.UTF8Encoding $false))
 Move-Item -Path $TempConfigFile -Destination $McpConfigFile -Force
 # Restrict the credential-bearing settings file to the current user only.
 try {

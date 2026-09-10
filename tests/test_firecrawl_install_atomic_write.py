@@ -41,8 +41,11 @@ def test_ps1_writes_mcp_config_atomically(rel: str, variables: tuple[str, str]) 
     )
     # The final Set-Content must target the temp file, not the real config
     # path directly, so a crash mid-write cannot leave it truncated.
-    assert f"Set-Content {temp_var} -Encoding UTF8" in text
-    assert f"Set-Content {config_var} -Encoding UTF8" not in text
+    assert f"[System.IO.File]::WriteAllText({temp_var}, $jsonText, (New-Object System.Text.UTF8Encoding $false))" in text, (
+        f"{rel}: the temp file must be written without a BOM"
+    )
+    assert "Set-Content" not in text or f"Set-Content {config_var}" not in text
+    assert "[pscustomobject]@{}" in text, f"{rel}: mcpServers must be created as an object, not a hashtable"
 
 
 @pytest.mark.parametrize("rel", WRITERS.keys())

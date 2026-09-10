@@ -205,6 +205,9 @@ def _home_pattern(home: str) -> re.Pattern[str]:
     # once nested) and Windows tools mix drive-letter case, so match the home
     # directory by its segments rather than by the exact string.
     parts = [re.escape(part) for part in re.split(r"[\\/]+", home) if part]
+    if not parts:
+        # A root home directory would otherwise redact every path separator.
+        return re.compile(r"(?!x)x")
     pattern = r"[\\/]+".join(parts)
     if home[:1] in ("\\", "/"):
         pattern = r"[\\/]+" + pattern
@@ -223,8 +226,8 @@ def _redact(text: str) -> str:
     return text
 
 
-def _tail(text: str, limit: int = 30) -> str:
-    lines = [line.rstrip() for line in text.splitlines() if line.strip()]
+def _tail(text: str, limit: int = 30, width: int = 400) -> str:
+    lines = [line.rstrip()[:width] for line in text.splitlines() if line.strip()]
     return "\n".join(f"  {line}" for line in lines[-limit:])
 
 
