@@ -31,6 +31,14 @@ from typing import Iterable
 _DATA_FILE = Path(__file__).resolve().parents[1] / "data" / "google-updates.json"
 
 
+# Every kind the ledger schema accepts. tests/test_content_quality.py asserts the
+# ledger only uses these, and the CLI --kind filter accepts exactly the same set.
+KNOWN_KINDS = (
+    "core", "spam", "core+spam", "policy", "qrg", "product", "schema", "cwv",
+    "discover", "documentation",
+)
+
+
 def _load() -> dict:
     with _DATA_FILE.open() as fh:
         return json.load(fh)
@@ -70,7 +78,7 @@ def main() -> int:
     parser.add_argument(
         "--kind",
         action="append",
-        choices=("core", "spam", "core+spam", "policy", "qrg", "product", "schema", "cwv", "discover"),
+        choices=KNOWN_KINDS,
         help="Filter to one or more kinds (repeatable).",
     )
     parser.add_argument(

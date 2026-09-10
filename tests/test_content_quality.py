@@ -273,6 +273,7 @@ def test_seo_updates_schema_and_order_are_enforced() -> None:
 
     assert dates == sorted(dates), "updates[] must be chronological"
     assert len(names) == len(set(names)), "update names must be unique"
+    assert set(seo_updates.KNOWN_KINDS) == allowed_kinds, "CLI --kind choices drifted from the schema"
     assert all(entry["kind"] in allowed_kinds for entry in updates)
     assert all(entry.get("notes", "").strip() for entry in updates)
     assert all(date.fromisoformat(value) for value in dates)
@@ -317,3 +318,16 @@ def test_seo_updates_filter_by_year() -> None:
     data = seo_updates._load()
     since_2025 = seo_updates._filter(data["updates"], since="2025")
     assert all(u["date"] >= "2025-01-01" for u in since_2025)
+
+
+def test_seo_updates_cli_accepts_every_known_kind() -> None:
+    """`--kind documentation` used to be rejected by argparse while the ledger used it."""
+    import subprocess, sys
+    script = REPO_ROOT / "scripts" / "seo_updates.py" if "REPO_ROOT" in globals() else Path(__file__).resolve().parents[1] / "scripts" / "seo_updates.py"
+    for kind in seo_updates.KNOWN_KINDS:
+        result = subprocess.run(
+            [sys.executable, str(script), "--kind", kind, "--json", "--limit", "1"],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0, f"--kind {kind} failed: {result.stderr}"
+        json.loads(result.stdout)
