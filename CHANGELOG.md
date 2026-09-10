@@ -72,6 +72,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `uninstall.ps1` failed on Windows PowerShell 5.1 with "A positional parameter
+  cannot be found" because it used the three-argument `Join-Path` form that only
+  PowerShell 7 accepts; caught by the new 5.1 smoke job.
 - `content_quality.py` tokenises CJK text so Korean, Japanese, and Chinese pages get a
   real score instead of collapsing to one token, and reports a `coverage` object
   (`entity_density: not_computed`, `phrase_lists: english_only`) plus a human note when
