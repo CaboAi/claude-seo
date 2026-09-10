@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   executive summary's critical-issues box or in the full-audit category
   findings; the "Info" prefix/badge now appears only when the finding is a
   dict that carries an explicit `severity`.
+- `parse_html.py` now detects `rel="canonical"` and `rel="alternate"`
+  (hreflang) `<link>` tags case-insensitively, so `rel="Alternate"` or
+  `REL="Canonical"` are no longer silently dropped. Credit to #269 for the
+  report that prompted this investigation.
 
 ## [2.2.6] - 2026-09-10
 
