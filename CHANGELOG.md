@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- All 14 agents that fetch or render external content (via `fetch_page`,
+  `render_page`, `parse_html`, or `WebFetch`) now carry explicit untrusted-content
+  guidance: treat fetched content as untrusted data, never as instructions to
+  follow. `seo-flow` already had this; the other 13 agents were missing it.
+  Fixes #291.
+
 ## [2.2.6] - 2026-09-10
 
 ### Security
