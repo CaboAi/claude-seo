@@ -15,7 +15,16 @@ if (Test-Path $McpConfigFile) {
     $settings = Get-Content $McpConfigFile -Raw | ConvertFrom-Json
     if ($settings.mcpServers.'firecrawl-mcp') {
         $settings.mcpServers.PSObject.Properties.Remove('firecrawl-mcp')
-        $settings | ConvertTo-Json -Depth 10 | Set-Content $McpConfigFile -Encoding UTF8
+        # Write atomically: stage to a temp file in the same directory, then
+        # swap it into place, so a crash mid-write never leaves
+        # ~/.claude.json truncated or half-written (it is shared with
+        # Claude Code and other installers).
+        # -Depth 100 (not the ConvertTo-Json default of 2, or the previous
+        # 10) so an existing ~/.claude.json with deeply nested config
+        # round-trips intact.
+        $TempConfigFile = Join-Path (Split-Path -Parent $McpConfigFile) ".claude.json.$([guid]::NewGuid().ToString('N')).tmp"
+        $settings | ConvertTo-Json -Depth 100 | Set-Content $TempConfigFile -Encoding UTF8
+        Move-Item -Path $TempConfigFile -Destination $McpConfigFile -Force
         Write-Host "v Removed MCP server from ~/.claude.json" -ForegroundColor Green
     }
 }

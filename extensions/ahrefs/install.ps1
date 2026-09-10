@@ -10,8 +10,7 @@ function Test-Cmd($name) {
     return $?
 }
 
-if (-not (Test-Cmd python)) { throw "Python 3 is required." }
-if (-not (Test-Cmd npx))    { throw "Node 18+ / npx is required." }
+if (-not (Test-Cmd npx)) { throw "Node 18+ / npx is required." }
 
 $SkillDir = Join-Path $HOME ".claude/skills"
 # MCP servers live in ~/.claude.json (the file `claude mcp add` writes).
@@ -38,27 +37,22 @@ Write-Host "✓ Installed skill: $SkillTarget"
 & npx --yes --package=@ahrefs/mcp@0.0.11 mcp --help *> $null
 
 # Merge ~/.claude.json.
-$pyScript = @"
-import json, os, sys, tempfile
-path, token = sys.argv[1], sys.argv[2]
-data = {}
-if os.path.exists(path):
-    try:
-        data = json.load(open(path))
-    except Exception:
-        data = {}
-data.setdefault('mcpServers', {})['ahrefs'] = {
-    'command': 'npx',
-    'args': ['--yes', '--package=@ahrefs/mcp@0.0.11', 'mcp'],
-    'env': {'AHREFS_API_TOKEN': token},
-}
-fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path) or '.', prefix='.settings.', suffix='.json')
-with os.fdopen(fd, 'w') as fh:
-    json.dump(data, fh, indent=2)
-os.replace(tmp, path)
-print(f'Wrote mcpServers.ahrefs to {path}')
-"@
-$pyScript | python - $McpConfigJson $Plain
+$settingsContent = if (Test-Path $McpConfigJson) { Get-Content $McpConfigJson -Raw | ConvertFrom-Json } else { @{} }
+if (-not $settingsContent.mcpServers) { $settingsContent | Add-Member -NotePropertyName mcpServers -NotePropertyValue @{} -Force }
+$settingsContent.mcpServers | Add-Member -NotePropertyName 'ahrefs' -NotePropertyValue @{
+    command = 'npx'
+    args = @('--yes', '--package=@ahrefs/mcp@0.0.11', 'mcp')
+    env = @{ AHREFS_API_TOKEN = $Plain }
+} -Force
+# Write atomically: stage to a temp file in the same directory, then swap
+# it into place, so a crash mid-write never leaves ~/.claude.json truncated
+# or half-written (it is shared with Claude Code and other installers).
+# -Depth 100 (not the ConvertTo-Json default of 2) so an existing
+# ~/.claude.json with deeply nested config round-trips intact.
+$TempConfigJson = Join-Path (Split-Path -Parent $McpConfigJson) ".claude.json.$([guid]::NewGuid().ToString('N')).tmp"
+$settingsContent | ConvertTo-Json -Depth 100 | Set-Content $TempConfigJson -Encoding UTF8
+Move-Item -Path $TempConfigJson -Destination $McpConfigJson -Force
+Write-Host "Wrote mcpServers.ahrefs to $McpConfigJson"
 
 Write-Host ""
 Write-Host "Done. Open a new Claude Code session and run /seo ahrefs metrics <url>."
