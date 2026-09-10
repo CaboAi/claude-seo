@@ -43,6 +43,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   directory, then `Move-Item -Force` / `os.replace`), and the PowerShell
   serialisation depth is raised from 10 to 100 so an existing `~/.claude.json`
   with deeply nested config round-trips intact instead of being flattened.
+- `scripts/backlinks_auth.py`'s token file hardening was a no-op on Windows:
+  it had no write path at all, and its permission story on POSIX (none) did
+  not match `google_auth.py`'s OAuth token handling. It now shares
+  `google_auth._chmod_quiet`, gains a `save_config()` that mirrors
+  `google_auth.py`'s `os.open`/`os.fchmod` 0o600 write pattern, and both
+  `save_config()` and `load_config()` make a best-effort `icacls` call on
+  Windows to restrict `~/.config/claude-seo/backlinks-api.json` to the
+  current user, since POSIX mode bits do not restrict NTFS ACLs (#290).
 
 ## [2.2.6] - 2026-09-10
 

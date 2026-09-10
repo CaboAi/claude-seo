@@ -17,6 +17,7 @@ Usage:
 import argparse
 import json
 import os
+import subprocess
 import sys
 from typing import Optional
 
@@ -34,6 +35,17 @@ except ImportError as _import_exc:
     # cybersecurity audit (v2.0.0 Phase H). Refuse to run instead.
     raise RuntimeError(
         "scripts/url_safety.py is required for SSRF protection. "
+        "Install with: pip install -r requirements.txt"
+    ) from _import_exc
+
+try:
+    # Reuse google_auth.py's legacy-permission remediation helper instead of
+    # duplicating it. It is path/mode-generic (no dependency on google_auth's
+    # own TOKEN_PATH), so it is safe to share as-is.
+    from google_auth import _chmod_quiet
+except ImportError as _import_exc:
+    raise RuntimeError(
+        "scripts/google_auth.py is required alongside backlinks_auth.py. "
         "Install with: pip install -r requirements.txt"
     ) from _import_exc
 
@@ -57,6 +69,76 @@ SERVICE_NAMES = {
 }
 
 
+def _restrict_to_current_user_windows(path: str) -> None:
+    """Best-effort Windows ACL restriction to the current user (issue #290).
+
+    POSIX mode bits (``chmod``/``fchmod``) are meaningless on Windows: NTFS
+    access control is ACL-based, so forcing ``0o600`` there does not actually
+    stop other local accounts from reading the file. ``icacls`` is the
+    closest equivalent. Failures (missing binary, non-NTFS volume, a
+    restricted shell) are swallowed with a logged warning rather than
+    aborting the credential write or load — POSIX users never reach this
+    function at all, since it is a no-op there.
+    """
+    if os.name != "nt":
+        return
+    try:
+        subprocess.run(
+            [
+                "icacls",
+                path,
+                "/inheritance:r",
+                "/grant:r",
+                f"{os.environ.get('USERNAME', '')}:F",
+            ],
+            check=False,
+            capture_output=True,
+            timeout=10,
+        )
+    except Exception as exc:  # best-effort hardening only; never fatal
+        print(
+            f"Warning: could not restrict {path} to the current user via icacls: {exc}",
+            file=sys.stderr,
+        )
+
+
+def _write_secure_json(path: str, data: dict) -> None:
+    """Write ``data`` to ``path`` as JSON with hardened, non-world-readable permissions.
+
+    Mirrors ``google_auth.py``'s ``_save_oauth_token`` write pattern:
+        1. Pre-chmod any existing file (closes a legacy umask=022 window).
+        2. ``os.open`` with explicit mode 0o600 (applies only to newly
+           created files; ignored by the OS when the file already exists).
+        3. ``os.fchmod`` on the open fd to *force* 0o600 even if the file
+           pre-existed at step 2 — defeats the os.path.exists()/os.open()
+           TOCTOU race where an external writer could install a 0o644 file
+           between the two calls.
+        4. On Windows, a best-effort ``icacls`` restriction, since steps 2-3
+           are a no-op there (issue #290).
+
+    The file is never world-readable, even briefly.
+    """
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    if os.path.exists(path):
+        _chmod_quiet(path, 0o600)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    fd = os.open(path, flags, 0o600)
+    try:
+        fchmod = getattr(os, "fchmod", None)
+        if fchmod is not None:
+            fchmod(fd, 0o600)
+    except OSError:
+        pass  # FS may not support fchmod (e.g. some Windows filesystems)
+    with os.fdopen(fd, "w") as f:
+        json.dump(data, f, indent=2)
+    _restrict_to_current_user_windows(path)
+
+
+def save_config(config: dict) -> None:
+    """Persist backlink API credentials to CONFIG_PATH with hardened permissions."""
+    _write_secure_json(CONFIG_PATH, config)
+
+
 def load_config() -> dict:
     """
     Load configuration from config file with environment variable fallbacks.
@@ -77,6 +159,10 @@ def load_config() -> dict:
 
     # Load from config file
     if os.path.exists(CONFIG_PATH):
+        # Remediate a world-readable legacy file in place (matches
+        # google_auth._load_oauth_token), including on Windows (#290).
+        _chmod_quiet(CONFIG_PATH, 0o600)
+        _restrict_to_current_user_windows(CONFIG_PATH)
         try:
             with open(CONFIG_PATH, "r") as f:
                 file_config = json.load(f)
