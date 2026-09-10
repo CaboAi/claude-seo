@@ -20,7 +20,7 @@ metadata:
 
 ### 1. Crawlability
 - robots.txt: exists, valid, not blocking important resources
-- XML sitemap: run `claude-seo run sitemap_discovery.py <url> --json`; require a
+- XML sitemap: run `"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run sitemap_discovery.py <url> --json`; require a
   valid entry in `found`, and report stale or unsafe robots.txt declarations
   separately from working fallback locations
 - Noindex tags: intentional vs accidental
@@ -189,7 +189,7 @@ It is also available through Lighthouse CLI with
 
 ```bash
 # Render with Playwright + capture accessibility tree, then score
-claude-seo run agent_ux_check.py https://example.com --json
+"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run agent_ux_check.py https://example.com --json
 ```
 
 The scanner outputs an Agent-UX score (0-100) plus itemized issues:
@@ -201,7 +201,7 @@ The scanner outputs an Agent-UX score (0-100) plus itemized issues:
 The accessibility-tree snapshot uses Chromium's
 `Accessibility.getFullAXTree` CDP command through Playwright. To capture the
 tree without scoring, use
-`claude-seo run render_page.py <url> --a11y-tree --json`.
+`"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run render_page.py <url> --a11y-tree --json`.
 
 Surface findings as **opportunities**, not failures; don't gate audits on a
 sub-100 Agent-UX score. WebMCP origin-trial/sign-up status needs verification,
@@ -235,7 +235,7 @@ If DataForSEO MCP tools are available, use `on_page_instant_pages` for real page
 
 ## Google API Integration (Optional)
 
-If Google API credentials are configured, use `claude-seo run pagespeed_check.py <url> --json` for real PSI + CrUX field data (replaces lab-only CWV estimates), `claude-seo run crux_history.py <url> --json` for 25-week CWV trends, and `claude-seo run gsc_inspect.py <url> --json` for real indexation status per URL.
+If Google API credentials are configured, use `"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run pagespeed_check.py <url> --json` for real PSI + CrUX field data (replaces lab-only CWV estimates), `"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run crux_history.py <url> --json` for 25-week CWV trends, and `"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run gsc_inspect.py <url> --json` for real indexation status per URL.
 
 ## Error Handling
 

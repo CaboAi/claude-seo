@@ -13,6 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The plugin now installs from the claude.ai-hosted marketplace. Hosted sync
+  rejects any plugin that ships a top-level `bin/` directory with
+  `marketplace_sync_bin_directory_not_allowed`, which is exactly what the
+  launcher lived in, so the listing could never sync. `bin/claude-seo` moved to
+  `scripts/claude-seo`, where it resolves `runtime.py` as a sibling, and every
+  skill, agent, and doc now calls it through the documented plugin-relative
+  form `"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run <script.py>` instead of
+  relying on undocumented `bin/` PATH injection. Manual installs are unchanged
+  in behaviour: `install.sh` and `install.ps1` copy the launcher to
+  `~/.claude/skills/seo/scripts/claude-seo` and rewrite that canonical token to
+  the absolute path in the Markdown they install. Fixes #298; supersedes #199.
 - `seo-technical` no longer treats dynamic rendering as a valid setup to verify. Google
   documents it as a workaround rather than a recommended solution, so the audit step now
   flags it as technical debt. Adds a rendering-strategy table (SSR / SSG / CSR) and a

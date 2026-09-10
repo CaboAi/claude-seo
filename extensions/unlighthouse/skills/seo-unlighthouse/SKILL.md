@@ -28,7 +28,7 @@ and aggregate the results. Useful when:
 | `/seo unlighthouse <url> --device desktop` | Desktop form factor |
 | `/seo unlighthouse <url> --max-routes 50 --output-dir ./reports` | Cap + persist |
 
-All flags forward through `claude-seo run unlighthouse_run.py`, which handles
+All flags forward through `"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run unlighthouse_run.py`, which handles
 url_safety pre-flight and subprocess timeout management.
 
 ## Output handling
@@ -44,4 +44,4 @@ returns it parsed. Aggregate fields:
 
 - For single-URL field data (CrUX), use `seo-google psi` / `seo-google crux`.
 - For LCP subpart decomposition on slow pages, use the
-  `claude-seo run lcp_subparts.py` workflow (Phase C).
+  `"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run lcp_subparts.py` workflow (Phase C).

@@ -7,7 +7,7 @@ on:
       - ".github/workflows/windows-smoke.yml"
       - "install.ps1"
       - "uninstall.ps1"
-      - "bin/claude-seo"
+      - "scripts/claude-seo"
       - "requirements.txt"
       - "scripts/runtime.py"
       - "scripts/seo_updates.py"

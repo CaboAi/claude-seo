@@ -197,12 +197,14 @@ try {
         Copy-Item -Recurse -Force "$ScriptsPath\*" $SkillScripts
     }
 
-    # Copy the stable launcher used by skill and agent instructions.
-    $BinPath = Join-Path $TempDir 'bin'
-    $SkillBin = Join-Path $SkillDir 'bin'
-    if (Test-Path (Join-Path $BinPath 'claude-seo')) {
-        New-Item -ItemType Directory -Force -Path $SkillBin | Out-Null
-        Copy-Item -Force (Join-Path $BinPath 'claude-seo') (Join-Path $SkillBin 'claude-seo')
+    # Copy the stable launcher used by skill and agent instructions. It ships in
+    # scripts/ (never a top-level bin/, which hosted marketplaces reject) and
+    # resolves runtime.py as a sibling, so it lands beside the copied scripts.
+    $LauncherSource = Join-Path $ScriptsPath 'claude-seo'
+    $SkillLauncherDir = Join-Path $SkillDir 'scripts'
+    if (Test-Path $LauncherSource) {
+        New-Item -ItemType Directory -Force -Path $SkillLauncherDir | Out-Null
+        Copy-Item -Force $LauncherSource (Join-Path $SkillLauncherDir 'claude-seo')
     }
 
     # Copy hooks
@@ -263,10 +265,12 @@ try {
         Copy-Item -Force $pluginManifest (Join-Path $SkillDir 'runtime-plugin.json')
     }
 
-    # Manual installs do not receive plugin bin/ PATH injection. Rewrite only
-    # the canonical runtime token in installed Markdown. Claude Code's Bash tool
-    # expands $HOME on Windows as well as Unix.
-    $manualRunner = '"$HOME/.claude/skills/seo/bin/claude-seo" run'
+    # Manual installs have no ${CLAUDE_PLUGIN_ROOT}. Rewrite the canonical
+    # launcher token in installed Markdown to the absolute installed path.
+    # Claude Code's Bash tool expands $HOME on Windows as well as Unix. The
+    # replacement consumes the plugin-root token, so a second pass is a no-op.
+    $pluginRunner = '"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run'
+    $manualRunner = '"$HOME/.claude/skills/seo/scripts/claude-seo" run'
     $installedDocs = @()
     Get-ChildItem -Path $SkillsPath -Directory | ForEach-Object {
         $sourceRoot = $_.FullName
@@ -306,11 +310,13 @@ try {
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
     $installedDocs | ForEach-Object {
         $text = [System.IO.File]::ReadAllText($_.FullName)
-        $manualSetup = '"$HOME/.claude/skills/seo/bin/claude-seo" setup'
-        $manualDoctor = '"$HOME/.claude/skills/seo/bin/claude-seo" doctor'
-        $updated = $text.Replace('claude-seo run', $manualRunner)
-        $updated = $updated.Replace('claude-seo setup', $manualSetup)
-        $updated = $updated.Replace('claude-seo doctor', $manualDoctor)
+        $pluginSetup = '"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" setup'
+        $pluginDoctor = '"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" doctor'
+        $manualSetup = '"$HOME/.claude/skills/seo/scripts/claude-seo" setup'
+        $manualDoctor = '"$HOME/.claude/skills/seo/scripts/claude-seo" doctor'
+        $updated = $text.Replace($pluginRunner, $manualRunner)
+        $updated = $updated.Replace($pluginSetup, $manualSetup)
+        $updated = $updated.Replace($pluginDoctor, $manualDoctor)
         if ($updated -ne $text) {
             [System.IO.File]::WriteAllText($_.FullName, $updated, $utf8NoBom)
         }
