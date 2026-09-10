@@ -27,6 +27,7 @@ Security fixes: config path corrected to ~/.config/claude-seo/
 
 import argparse
 import json
+import os
 import sys
 import tempfile
 from contextlib import contextmanager
