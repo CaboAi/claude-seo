@@ -203,7 +203,7 @@ This rule has been stated in this skill before and was violated anyway, so it is
 now checkable. **Before writing any backlink output, run the validator:**
 
 ```bash
-claude-seo run validate_backlink_report.py --report <report>.json --json
+"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run validate_backlink_report.py --report <report>.json --json
 ```
 
 Pass the sources you actually collected (`cc_data`, `moz_data`, `bing_data`,

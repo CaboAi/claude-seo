@@ -41,7 +41,7 @@ Common Crawl *does* support as low-confidence findings, and note "limited to
 domain-level metrics" in the report. The same applies to any finding written with
 `source: not-assessed`.
 
-This is enforced, not advisory: `claude-seo run validate_backlink_report.py` fails
+This is enforced, not advisory: `"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run validate_backlink_report.py` fails
 a report (`status: FAIL`) that carries a number in either case. See the
 `seo-backlinks` skill's "MUST NOT: score what you did not measure" section.
 
