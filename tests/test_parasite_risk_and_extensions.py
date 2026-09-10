@@ -19,6 +19,7 @@ _SCRIPTS = _REPO_ROOT / "scripts"
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
+pytest.importorskip("requests")
 import parasite_risk  # noqa: E402
 
 # ---------------------------------------------------------------------------

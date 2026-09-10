@@ -21,6 +21,10 @@ _SCRIPTS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
 
+# backlinks_auth.py unconditionally imports url_safety, which itself hard-requires
+# requests (by design: no SSRF checks is worse than none). Skip cleanly rather
+# than aborting collection when requests is not installed.
+pytest.importorskip("requests")
 import backlinks_auth  # noqa: E402
 
 

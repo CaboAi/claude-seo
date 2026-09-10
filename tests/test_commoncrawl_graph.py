@@ -22,6 +22,7 @@ _SCRIPTS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
 
+pytest.importorskip("requests")
 import commoncrawl_graph as ccg  # noqa: E402
 
 
