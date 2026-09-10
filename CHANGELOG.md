@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   invalid JSON, while a malformed literal in plain HTML is still reported.
 - The JSON-LD hook accepts the schema.org `@context` with a trailing slash, in
   list form, and in `{"@vocab": ...}` object form.
+- `google_report.py` no longer labels a plain-string finding as "Info" in the
+  executive summary's critical-issues box or in the full-audit category
+  findings; the "Info" prefix/badge now appears only when the finding is a
+  dict that carries an explicit `severity`.
 
 ## [2.2.6] - 2026-09-10
 
