@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Keywords Everywhere (Open PageRank) as an optional, free-signup backlinks
+  fallback source: a single 0-10 domain rank metric used for the Profile
+  Overview section when Moz isn't configured. Wired through
+  `backlinks_auth.py` (new `keywordseverywhere` service) and a new
+  `keywordseverywhere_api.py` client, following the existing Moz/Bing auth
+  and source patterns. The outbound call goes through the shared
+  `url_safety.safe_requests_get` DNS-pinned helper, domains are normalized
+  and SSRF-checked before use, and requests are capped at 100 domains per
+  call. `keywordseverywhere_api.py` is registered in `runtime.py`'s
+  `ALLOWED_CORE_SCRIPTS` (a script invoked from a SKILL.md but missing from
+  that allowlist is refused by `claude-seo run`; a new test in
+  `tests/test_runtime.py` guards against that class of bug for every
+  script every SKILL.md/agent invokes). The live API path is unverified:
+  landing this required no Keywords Everywhere account, and none was
+  available to exercise the real endpoint end to end (#262).
+
 ### Changed
 
 - The five judgment-heavy agents (`seo-content`, `seo-geo`, `seo-sxo`, `seo-cluster`,
