@@ -15,6 +15,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   follow. `seo-flow` already had this; the other 13 agents were missing it.
   Fixes #291.
 
+### Fixed
+
+- `unlighthouse_run.py` no longer passes `--max-routes` as `--scanner
+  '{"maxRoutes": N}'`, a CLI flag unlighthouse-ci's parser never reads (the
+  crawl silently ran uncapped). Route count and a new per-page timeout are
+  now set via a generated `unlighthouse.config.mjs` passed with
+  `--config-file`, confirmed against unlighthouse's CLI source and docs.
+  `ci-result.json` is parsed as the array the default `jsonSimple` reporter
+  actually writes, with a tolerant fallback for the `jsonExpanded` object
+  shape, instead of assuming a dict. `extensions/unlighthouse/install.sh`
+  no longer aborts on a marketplace/plugin install: it now also checks
+  `${CLAUDE_PLUGIN_ROOT}` and the plugin cache before requiring the manual
+  `~/.claude/skills/seo` layout. Fixes #189.
+
 ## [2.2.6] - 2026-09-10
 
 ### Security
