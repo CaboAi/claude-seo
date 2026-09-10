@@ -17,7 +17,6 @@ if _SCRIPTS not in sys.path:
 
 import validate_backlink_report as vbr  # noqa: E402
 
-
 # ─── Backlink score gating ───────────────────────────────────────────────────
 
 BACKLINKS_SKILL = REPO_ROOT / "skills" / "seo-backlinks" / "SKILL.md"

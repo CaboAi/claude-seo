@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 from datetime import date
 from pathlib import Path
@@ -322,8 +323,7 @@ def test_seo_updates_filter_by_year() -> None:
 
 def test_seo_updates_cli_accepts_every_known_kind() -> None:
     """`--kind documentation` used to be rejected by argparse while the ledger used it."""
-    import subprocess, sys
-    script = REPO_ROOT / "scripts" / "seo_updates.py" if "REPO_ROOT" in globals() else Path(__file__).resolve().parents[1] / "scripts" / "seo_updates.py"
+    script = Path(__file__).resolve().parents[1] / "scripts" / "seo_updates.py"
     for kind in seo_updates.KNOWN_KINDS:
         result = subprocess.run(
             [sys.executable, str(script), "--kind", kind, "--json", "--limit", "1"],

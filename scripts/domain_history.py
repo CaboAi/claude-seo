@@ -68,7 +68,6 @@ if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
 from url_safety import URLSafetyError, validate_url_strict  # noqa: E402
 
-
 _DATE_LABELS = {
     "created": (
         "creation date", "created on", "registered on", "registered",

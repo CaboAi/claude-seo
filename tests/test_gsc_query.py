@@ -8,7 +8,6 @@ from unittest.mock import patch
 
 import pytest
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 _SCRIPTS = REPO_ROOT / "scripts"
 if str(_SCRIPTS) not in sys.path:
