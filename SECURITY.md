@@ -60,7 +60,12 @@ claude-seo is a research and audit toolkit that runs on a user's workstation. It
 - **IPv6-only audit targets.** The strict validator queries `family=AF_INET` for the initial resolution. Hosts with AAAA records only will surface as "DNS resolution failed". This is **fail-closed** by design — we'd rather refuse than connect to an unvalidated IPv6 endpoint. Tracked for a future patch (full dual-stack pinning, similar to the Playwright handler which already uses `AF_UNSPEC`).
 - **Windows file permissions.** `os.fchmod(fd, 0o600)` is a no-op on Windows for non-ACL filesystems. Users on Windows should rely on per-user directory ACLs instead of POSIX mode bits.
 
-- **RFC 6598 (100.64.0.0/10) is refused.** Cloud providers serve instance metadata in this range, so `url_safety` treats it like RFC 1918. Tailscale also allocates from it: a staging site reached over Tailscale cannot be audited with the default policy. There is no escape hatch yet; an explicit local-target allowlist is planned.
+- **RFC 6598 (100.64.0.0/10) is refused by default.** Cloud providers serve instance metadata in this range, so `url_safety` treats it like RFC 1918. Tailscale also allocates from it, so a staging site reached over Tailscale is refused under the default policy. The escape hatch is `CLAUDE_SEO_LOCAL_TARGETS`, a comma-separated allowlist of `host` or `host:port` entries (for example `localhost:3000,127.0.0.1:8080,100.101.102.103`, the last being a Tailscale address). Its scope is deliberately narrow:
+  - It is consulted **only** for the first, top-level URL passed to `validate_url` / `validate_url_strict`. Redirect targets, embedded subresources, and every request the Playwright route handler sees stay fail-closed, so a page served from an allowlisted dev server still cannot pull anything else off the local network. Rendering an allowlisted host through Playwright is therefore not supported; the raw-HTTP path is.
+  - A host must be named exactly. There is no range, wildcard, or "allow private" mode, `host:port` matches that port only, and a bare `host` matches any port on that host.
+  - Cloud metadata endpoints are refused even when listed, by name (`metadata.google.internal` and its siblings) and by address (169.254.169.254, `fd00:ec2::254`, and Alibaba's 100.100.100.200, which sits inside the Tailscale range). Link-local, multicast, unspecified, and reserved addresses are never allowlistable.
+  - `is_safe_ip` is unchanged and reads no environment, so every fail-closed path downstream of the first connection is unaffected.
+  - Unset, claude-seo behaves exactly as it did before the flag existed.
 
 ## Security-relevant code paths
 

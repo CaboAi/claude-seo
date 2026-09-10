@@ -46,6 +46,18 @@ is_safe_ip(ip_str) -> bool
 URLSafetyError
     ValueError subclass raised by the strict validator and pinning helpers.
 
+Local targets
+=============
+``CLAUDE_SEO_LOCAL_TARGETS`` is an opt-in, comma-separated allowlist of
+``host`` or ``host:port`` entries (for example
+``localhost:3000,127.0.0.1:8080,100.101.102.103``) that lets an operator
+audit a dev server, a staging host, or a machine reached over Tailscale.
+It is consulted **only** for the first, top-level URL handed to
+``validate_url`` / ``validate_url_strict``. Redirect targets, embedded
+subresources, and browser-issued requests never consult it, and cloud
+metadata endpoints are refused even when listed. Unset, the policy is
+exactly what it is without the feature.
+
 Threading
 =========
 The DNS pinning helper is a critical section guarded by a non-blocking
@@ -73,6 +85,7 @@ in SECURITY.md.
 from __future__ import annotations
 
 import ipaddress
+import os
 import re
 import socket
 import threading
@@ -214,6 +227,155 @@ def is_safe_ip(ip_str: str) -> bool:
     )
 
 
+# ---------------------------------------------------------------------------
+# CLAUDE_SEO_LOCAL_TARGETS: an explicit, top-level-only allowlist
+# ---------------------------------------------------------------------------
+#
+# Auditing a site before it is deployed, or a staging host reached over
+# Tailscale, means pointing claude-seo at a non-public address. The default
+# policy refuses that, correctly: this toolkit follows URLs found on pages it
+# crawls, so a blanket "allow private" switch is an SSRF hole with a friendly
+# name.
+#
+# The allowlist is therefore narrow by construction:
+#
+#   * It is consulted for the FIRST, top-level URL only, in ``validate_url``
+#     and ``validate_url_strict``. Redirect targets, embedded subresources,
+#     and browser-issued requests never reach it: those go through
+#     ``is_safe_ip`` and ``_BLOCKED_HOSTNAMES``, which this module keeps
+#     free of any environment dependency.
+#   * A host must be named. There is no range, wildcard, or "all private".
+#   * ``host:port`` matches that port only. A bare ``host`` matches any port.
+#   * Cloud metadata endpoints are refused even when listed. This is the
+#     trapdoor every "allow local" flag falls through: 169.254.169.254 is
+#     link-local, 100.100.100.200 sits inside the Tailscale range this
+#     allowlist exists to permit, and fd00:ec2::254 is unique-local rather
+#     than link-local, so no single address predicate catches all three.
+_LOCAL_TARGETS_ENV = "CLAUDE_SEO_LOCAL_TARGETS"
+
+
+# Hostnames and literals no allowlist entry can ever unblock.
+_NEVER_ALLOWLISTABLE_HOSTNAMES: frozenset[str] = frozenset(
+    {
+        "metadata",
+        "metadata.goog",
+        "metadata.google.internal",
+        "metadata.azure.com",
+        "metadata.ec2.internal",
+        "metadata.oraclecloud.com",
+        "169.254.169.254",  # AWS, Azure, GCP, Oracle, Alibaba metadata IPv4
+        "100.100.100.200",  # Alibaba metadata, inside RFC 6598
+        "fd00:ec2::254",    # AWS IMDS IPv6
+        "0.0.0.0",
+    }
+)
+
+
+def _is_allowlistable_ip(ip_str: str) -> bool:
+    """True when an explicit allowlist entry may reach ``ip_str``.
+
+    Loopback, RFC 1918, and RFC 6598 (Tailscale) are the ranges an operator
+    can opt into. Link-local stays refused in both families: that is where
+    the IMDS endpoints live, and Python's ``is_private`` reports
+    169.254.0.0/16 as private, so a plain "loopback or private" carve-out
+    would hand back 169.254.169.254. Multicast, unspecified, and reserved
+    are refused for the same reason: nothing an SEO audit legitimately
+    targets lives there.
+    """
+    try:
+        ip = ipaddress.ip_address(ip_str)
+    except ValueError:
+        return False
+    if ip.version == 6 and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    if str(ip) in _NEVER_ALLOWLISTABLE_HOSTNAMES:
+        return False
+    if ip.is_link_local or ip.is_multicast or ip.is_unspecified:
+        return False
+    if ip.is_loopback:
+        # Checked before is_reserved: IPv6 ::/8 is reserved and contains ::1.
+        return True
+    return not ip.is_reserved
+
+
+def _parse_local_target(entry: str) -> Optional[tuple[str, Optional[int]]]:
+    """Parse one ``host`` or ``host:port`` entry into ``(host, port|None)``.
+
+    Returns ``None`` for anything unparseable, so a typo in the environment
+    variable widens nothing.
+    """
+    entry = entry.strip()
+    if not entry:
+        return None
+    # A bare IPv6 literal has more than one colon and no brackets; urlparse
+    # would read its last group as a port.
+    if entry.count(":") > 1 and "[" not in entry:
+        candidate, port = entry, None
+    else:
+        try:
+            parsed = urlparse(f"//{entry}")
+            candidate, port = parsed.hostname, parsed.port
+        except ValueError:
+            return None
+        if not candidate:
+            return None
+    try:
+        return normalize_hostname(candidate), port
+    except URLSafetyError:
+        return None
+
+
+def _local_targets() -> tuple[tuple[str, Optional[int]], ...]:
+    """The parsed contents of ``CLAUDE_SEO_LOCAL_TARGETS``.
+
+    Read on every call rather than cached: the variable is operator
+    configuration, and a cached empty tuple from import time would make the
+    setting silently inert in a long-lived process.
+    """
+    raw = os.environ.get(_LOCAL_TARGETS_ENV, "")
+    if not raw.strip():
+        return ()
+    parsed = (_parse_local_target(part) for part in raw.split(","))
+    return tuple(entry for entry in parsed if entry is not None)
+
+
+def _is_allowlisted_local_target(hostname: str, port: Optional[int]) -> bool:
+    """True when ``hostname``/``port`` is named in ``CLAUDE_SEO_LOCAL_TARGETS``.
+
+    ``hostname`` must already be normalized. Metadata endpoints are refused
+    before the list is even read.
+    """
+    if hostname in _NEVER_ALLOWLISTABLE_HOSTNAMES:
+        return False
+    if not _is_allowlistable_ip(hostname) and _looks_like_ip(hostname):
+        return False
+    for entry_host, entry_port in _local_targets():
+        if entry_host != hostname:
+            continue
+        if entry_port is None or entry_port == port:
+            return True
+    return False
+
+
+def _looks_like_ip(hostname: str) -> bool:
+    try:
+        ipaddress.ip_address(hostname)
+    except ValueError:
+        return False
+    return True
+
+
+def _url_port(parsed) -> Optional[int]:
+    """The URL's effective port, or ``None`` if the authority names a bad one."""
+    try:
+        explicit = parsed.port
+    except ValueError:
+        return None
+    if explicit is not None:
+        return explicit
+    return 443 if parsed.scheme == "https" else 80
+
+
 def normalize_hostname(hostname: str) -> str:
     """
     Canonicalize a hostname so that obfuscated forms cannot bypass the
@@ -286,13 +448,20 @@ def validate_url(url: str) -> bool:
         hostname = normalize_hostname(parsed.hostname)
     except URLSafetyError:
         return False
-    if hostname in _BLOCKED_HOSTNAMES:
+    # An unparseable port matches no allowlist entry, but is otherwise left
+    # to the caller and to validate_url_strict: this function is a parse-time
+    # check and its answer for such URLs is unchanged.
+    port = _url_port(parsed)
+    allowlisted = port is not None and _is_allowlisted_local_target(hostname, port)
+    if hostname in _BLOCKED_HOSTNAMES and not allowlisted:
         return False
     try:
         ipaddress.ip_address(hostname)
     except ValueError:
         return True  # Hostname is a name, not a literal — OK at parse time.
-    return is_safe_ip(hostname)
+    if is_safe_ip(hostname):
+        return True
+    return allowlisted and _is_allowlistable_ip(hostname)
 
 
 def validate_url_strict(url: str) -> tuple[str, str]:
@@ -317,7 +486,14 @@ def validate_url_strict(url: str) -> tuple[str, str]:
         raise URLSafetyError("URL has no hostname")
 
     hostname = normalize_hostname(parsed.hostname)
-    if hostname in _BLOCKED_HOSTNAMES:
+    port = _url_port(parsed)
+    if port is None:
+        raise URLSafetyError(f"Invalid port in URL authority: {url!r}")
+
+    # The CLAUDE_SEO_LOCAL_TARGETS allowlist is read here and nowhere the
+    # request chain can reach later, which is what keeps it top-level only.
+    allowlisted = _is_allowlisted_local_target(hostname, port)
+    if hostname in _BLOCKED_HOSTNAMES and not allowlisted:
         raise URLSafetyError(f"Blocked hostname: {hostname}")
 
     # If the hostname is an IP literal, validate it directly without DNS.
@@ -327,11 +503,12 @@ def validate_url_strict(url: str) -> tuple[str, str]:
         literal = None
 
     if literal is not None:
-        if not is_safe_ip(hostname):
+        if not is_safe_ip(hostname) and not (
+            allowlisted and _is_allowlistable_ip(hostname)
+        ):
             raise URLSafetyError(f"Blocked IP literal: {hostname}")
         return url, str(literal)
 
-    port = parsed.port or (443 if parsed.scheme == "https" else 80)
     try:
         addrinfo = socket.getaddrinfo(
             hostname,
@@ -347,11 +524,14 @@ def validate_url_strict(url: str) -> tuple[str, str]:
         raise URLSafetyError(f"No A records for {hostname}")
 
     for ip_str in resolved_ips:
-        if not is_safe_ip(ip_str):
-            raise URLSafetyError(
-                f"DNS rebinding refused: {hostname} resolves to "
-                f"non-public IP {ip_str}"
-            )
+        if is_safe_ip(ip_str):
+            continue
+        if allowlisted and _is_allowlistable_ip(ip_str):
+            continue  # Named in CLAUDE_SEO_LOCAL_TARGETS; see that block.
+        raise URLSafetyError(
+            f"DNS rebinding refused: {hostname} resolves to "
+            f"non-public IP {ip_str}"
+        )
 
     pinned = resolved_ips[0]
     return url, pinned
