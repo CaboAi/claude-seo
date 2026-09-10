@@ -351,6 +351,12 @@ Two real boundaries worth being upfront about.
 
 ## Requirements
 
+**Agent models.** Five judgment-heavy agents (`seo-content`, `seo-geo`, `seo-sxo`,
+`seo-cluster`, `seo-drift`) run on Opus since v2.3.1; the other thirteen run on
+Sonnet. A full `/seo audit` therefore costs more than it did on v2.3.0. To change
+a model, edit the `model:` line in the agent's frontmatter under `agents/`.
+
+
 - Python 3.10+
 - Claude Code CLI
 - Optional: Playwright Chromium — install.sh offers to install it (you can skip the prompt); needed only for SPA rendering and screenshots

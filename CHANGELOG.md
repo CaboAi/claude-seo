@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The five judgment-heavy agents (`seo-content`, `seo-geo`, `seo-sxo`, `seo-cluster`,
+  `seo-drift`) declare `model: opus`; the other thirteen stay on Sonnet. README
+  documents the cost implication and how to override per agent (#268).
+
 ## [2.3.0] - 2026-09-10
 
 ### Security
