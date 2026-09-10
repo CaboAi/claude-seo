@@ -157,6 +157,58 @@ def test_content_quality_latin_scoring_unchanged_by_cjk_support() -> None:
     ), result
 
 
+def test_content_quality_english_output_keys_and_values_unchanged() -> None:
+    """English-language output must be byte-for-byte the same shape as before
+    the CJK coverage note: no ``coverage`` key, same keys, same values."""
+    text = (
+        "In today's fast-paced world, when it comes to SEO, "
+        "it's important to note that delving into the ever-evolving "
+        "landscape requires us to leverage the power of cutting-edge "
+        "strategies to unlock the potential of organic traffic."
+    ) * 5
+    result = content_quality.analyse(text)
+    assert set(result.keys()) == {
+        "filler_score",
+        "ai_pattern_score",
+        "information_density",
+        "repetition_score",
+        "overall_quality",
+        "flags",
+        "matches",
+        "tokens",
+        "unique_tokens",
+    }
+    assert "coverage" not in result
+
+
+def test_content_quality_cjk_output_carries_coverage_object() -> None:
+    """A CJK score must be flagged as partial coverage, not silently compared
+    to an English score as if every signal were computed the same way."""
+    text = (
+        "사주팔자는 태어난 연월일시를 천간과 지지로 옮긴 여덟 글자입니다. "
+        "절기를 기준으로 월주를 정하고, 진태양시로 시주를 보정합니다. "
+        "오행의 균형과 십신의 배치를 함께 살펴 전체 흐름을 읽습니다."
+    )
+    result = content_quality.analyse(text)
+    assert result["coverage"] == {
+        "script": "cjk",
+        "entity_density": "not_computed",
+        "phrase_lists": "english_only",
+    }
+
+
+def test_content_quality_cjk_human_output_notes_partial_coverage() -> None:
+    """The CLI's human-readable summary must call out partial CJK coverage."""
+    script = Path(__file__).resolve().parents[1] / "scripts" / "content_quality.py"
+    text = "사주팔자는 태어난 연월일시를 천간과 지지로 옮긴 여덟 글자입니다. " * 5
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        input=text, capture_output=True, text=True,
+    )
+    assert result.returncode in (0, 1)
+    assert "not directly comparable" in result.stdout
+
+
 # ---------------------------------------------------------------------------
 # content_humanize
 # ---------------------------------------------------------------------------

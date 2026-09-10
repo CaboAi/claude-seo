@@ -31,7 +31,14 @@ Output (JSON when ``--json`` is set)::
       "flags": ["filler", "ai-patterns", "low-density", ...],
       "matches": {"filler": [...], "ai_patterns": [...]},
       "tokens":                 int,
-      "unique_tokens":          int
+      "unique_tokens":          int,
+      "coverage":               present only for CJK-dominant text, e.g.
+                                 {"script": "cjk", "entity_density": "not_computed",
+                                  "phrase_lists": "english_only"}: the
+                                 filler/AI-pattern phrase lists and the
+                                 capitalisation-based entity heuristic are
+                                 English-only, so a CJK score is not directly
+                                 comparable to a Latin-script one.
     }
 
 Attribution
@@ -158,6 +165,27 @@ _ENTITY_RE = re.compile(r"\b(?:[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b")
 # on _NUMBER_RE alone and skews low. Tokenisation (above) is the load-bearing
 # fix; CJK named-entity detection needs a real model, not a regex.
 
+# Same character classes as the CJK branches of _TOKEN_RE, used only to guess
+# whether a text is CJK-dominant so we can flag which signals below are not
+# meaningfully computed for it. Not a language detector.
+_CJK_CHAR_RE = re.compile(
+    r"[가-힣ぁ-ゖァ-ヺー㐀-䶿一-鿿]"
+)
+_LATIN_CHAR_RE = re.compile(r"[A-Za-z]")
+
+
+def _detect_script(text: str) -> str | None:
+    """Return "cjk" when CJK/Hangul/kana characters dominate ``text``, else None.
+
+    ``None`` covers Latin-script and any other text; the coverage note is
+    only added when the score's known-unreliable-for-CJK signals apply.
+    """
+    cjk_chars = len(_CJK_CHAR_RE.findall(text))
+    if cjk_chars == 0:
+        return None
+    latin_chars = len(_LATIN_CHAR_RE.findall(text))
+    return "cjk" if cjk_chars >= latin_chars else None
+
 
 def _count_phrase_hits(text: str, patterns: Iterable[str]) -> list[str]:
     """Return the patterns that appear at least once in ``text`` (case-insensitive)."""
@@ -237,7 +265,7 @@ def analyse(text: str) -> dict:
         + min(100, n_tokens / 10.0) * 0.10  # length bonus capped at 1000 tokens
     )
 
-    return {
+    result = {
         "filler_score": filler_score,
         "ai_pattern_score": ai_pattern_score,
         "information_density": round(information_density, 3),
@@ -248,6 +276,22 @@ def analyse(text: str) -> dict:
         "tokens": n_tokens,
         "unique_tokens": unique,
     }
+
+    # The filler/AI-pattern phrase lists and the capitalisation-based entity
+    # heuristic are English-only; they are silently near-zero for CJK text
+    # rather than reporting "no filler found". Flag that explicitly so a CJK
+    # score is never read as comparable to a Latin-script one. Latin/other
+    # output is unchanged: no "coverage" key is added when every signal was
+    # actually computed.
+    script = _detect_script(text)
+    if script == "cjk":
+        result["coverage"] = {
+            "script": "cjk",
+            "entity_density": "not_computed",
+            "phrase_lists": "english_only",
+        }
+
+    return result
 
 
 def main() -> int:
@@ -294,6 +338,12 @@ def main() -> int:
         if result["matches"]["ai_patterns"]:
             print(f"  AI-pattern hits:     {', '.join(result['matches']['ai_patterns'][:5])}"
                   f"{' …' if len(result['matches']['ai_patterns']) > 5 else ''}")
+        if result.get("coverage"):
+            print(
+                "  Note: CJK text detected, entity-density and phrase-list "
+                "signals are English-only heuristics here, so this score is "
+                "not directly comparable to a Latin-script page."
+            )
 
     return 0 if result["overall_quality"] >= args.threshold else 1
 
