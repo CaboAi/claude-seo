@@ -15,10 +15,12 @@ installers rewrite that exact token to the absolute installed path.
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
-import sys
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 LAUNCHER = ROOT / "scripts" / "claude-seo"
@@ -67,7 +69,9 @@ def test_no_top_level_bin_directory() -> None:
 
 def test_launcher_lives_in_scripts_and_is_executable() -> None:
     assert LAUNCHER.is_file()
-    assert LAUNCHER.stat().st_mode & 0o111, "the launcher must stay executable"
+    if os.name == "posix":
+        # The executable bit is a POSIX mode bit; Windows checkouts have none.
+        assert LAUNCHER.stat().st_mode & 0o111, "the launcher must stay executable"
     text = LAUNCHER.read_text(encoding="utf-8")
     assert 'runtime="${launcher_dir}/runtime.py"' in text, (
         "the launcher must resolve runtime.py as a sibling"
@@ -112,15 +116,13 @@ def test_installers_reference_the_scripts_launcher() -> None:
     assert "bin/claude-seo" not in windows
 
 
+@pytest.mark.skipif(
+    os.name != "posix",
+    reason="the launcher is a bash script; Windows installs use install.ps1 and py -3, "
+    "which the manual installer smoke workflow exercises",
+)
 def test_launcher_runs_without_network_or_managed_runtime() -> None:
     """``doctor --help`` is handled by argparse before any venv is touched."""
-    if sys.platform == "win32":
-        import shutil
-
-        if shutil.which("bash") is None:
-            import pytest
-
-            pytest.skip("bash is unavailable on this runner")
     result = subprocess.run(
         ["bash", str(LAUNCHER), "doctor", "--help"],
         capture_output=True,
