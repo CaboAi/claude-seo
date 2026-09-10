@@ -24,6 +24,8 @@ def _load_module(monkeypatch, home: Path):
     must be patched before exec_module runs.
     """
     monkeypatch.setenv("HOME", str(home))
+    # Path.home() reads USERPROFILE on Windows, not HOME.
+    monkeypatch.setenv("USERPROFILE", str(home))
     spec = importlib.util.spec_from_file_location(
         "banana_setup_mcp", REPO_ROOT / "extensions/banana/scripts/setup_mcp.py"
     )

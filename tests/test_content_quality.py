@@ -201,9 +201,11 @@ def test_content_quality_cjk_human_output_notes_partial_coverage() -> None:
     """The CLI's human-readable summary must call out partial CJK coverage."""
     script = Path(__file__).resolve().parents[1] / "scripts" / "content_quality.py"
     text = "사주팔자는 태어난 연월일시를 천간과 지지로 옮긴 여덟 글자입니다. " * 5
+    # CJK input and output must not go through the Windows locale codec.
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
     result = subprocess.run(
         [sys.executable, str(script)],
-        input=text, capture_output=True, text=True,
+        input=text, capture_output=True, encoding="utf-8", errors="replace", env=env,
     )
     assert result.returncode in (0, 1)
     assert "not directly comparable" in result.stdout

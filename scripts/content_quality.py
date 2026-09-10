@@ -294,7 +294,23 @@ def analyse(text: str) -> dict:
     return result
 
 
+def _configure_utf8() -> None:
+    """Read stdin and write stdout as UTF-8 regardless of the console codec.
+
+    Windows consoles default to a legacy code page, which cannot encode CJK
+    text and would raise UnicodeEncodeError on the first non-Latin character.
+    """
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure:
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (ValueError, OSError):
+                pass
+
+
 def main() -> int:
+    _configure_utf8()
     parser = argparse.ArgumentParser(
         description="QRG-aligned content quality scorer."
     )

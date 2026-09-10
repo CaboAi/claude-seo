@@ -28,7 +28,13 @@ VALID = '{"@context":"https://schema.org","@type":"Organization","name":"Example
 def _run(tmp_path: Path, filename: str, head: str) -> subprocess.CompletedProcess:
     target = tmp_path / filename
     target.write_text(f"<html><head>{head}</head><body></body></html>", encoding="utf-8")
-    return subprocess.run([sys.executable, str(HOOK), str(target)], capture_output=True, text=True)
+    # The hook prints emoji markers as UTF-8; decode explicitly, because on
+    # Windows text=True uses cp1252 and a decode error inside the pipe reader
+    # thread leaves stdout as None.
+    return subprocess.run(
+        [sys.executable, str(HOOK), str(target)],
+        capture_output=True, encoding="utf-8", errors="replace",
+    )
 
 
 # --- false negatives -------------------------------------------------------

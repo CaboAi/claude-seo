@@ -19,7 +19,8 @@ def test_unclosed_script_tag_with_many_apostrophes_finishes_quickly(tmp_path: Pa
     result = subprocess.run(
         [sys.executable, str(HOOK), str(page)],
         capture_output=True,
-        text=True,
+        encoding="utf-8",
+        errors="replace",
         timeout=20,
     )
     assert time.monotonic() - started < 5, "hook took too long: possible catastrophic backtracking"
