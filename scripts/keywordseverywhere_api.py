@@ -24,11 +24,12 @@ except ImportError:
     sys.exit(1)
 
 import os
+
 _SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _SCRIPTS_DIR)
 try:
     from backlinks_auth import get_keywordseverywhere_api_key
-    from url_safety import validate_url, normalize_hostname
+    from url_safety import URLSafetyError, normalize_hostname, safe_requests_get, validate_url
 except ImportError:
     print("Error: backlinks_auth.py and url_safety.py required in scripts/", file=sys.stderr)
     sys.exit(1)
@@ -70,7 +71,7 @@ def get_rank(domains: list, api_key: str) -> dict:
     params = [("domains[]", d) for d in domains]
 
     try:
-        response = requests.get(KWE_BASE, headers=headers, params=params, timeout=30)
+        response = safe_requests_get(KWE_BASE, headers=headers, params=params, timeout=30)
 
         if response.status_code == 401 or response.status_code == 403:
             return {
@@ -128,6 +129,13 @@ def get_rank(domains: list, api_key: str) -> dict:
             "status": "error",
             "data": None,
             "error": "Request timed out after 30 seconds",
+            "metadata": {"source": "keywordseverywhere"},
+        }
+    except URLSafetyError as e:
+        return {
+            "status": "error",
+            "data": None,
+            "error": f"blocked by SSRF protection: {e}",
             "metadata": {"source": "keywordseverywhere"},
         }
     except requests.exceptions.RequestException as e:

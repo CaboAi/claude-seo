@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import re
 import signal
 import subprocess
 from pathlib import Path
@@ -223,3 +224,41 @@ def test_run_propagates_child_signal(tmp_path: Path, monkeypatch: pytest.MonkeyP
     )
     assert rc == 128 + signal.SIGTERM
     assert delivered == [(os.getpid(), signal.SIGTERM)]
+
+
+# Scripts run without an --extension flag are dispatched straight from the
+# core scripts/ directory, so they must be listed in ALLOWED_CORE_SCRIPTS or
+# `claude-seo run` refuses them at runtime, even though the SKILL.md/agent
+# instructions look correct. This regression was caught by hand for
+# keywordseverywhere_api.py (SKILL.md wired it up, ALLOWED_CORE_SCRIPTS did
+# not list it) -- this test makes sure the next one doesn't ship silently.
+_RUN_INVOCATION = re.compile(r'run\s+([A-Za-z0-9_]+\.py)(?!["\']?\s*--extension)')
+_EXTENSION_FLAG = re.compile(r'run\s+[A-Za-z0-9_]+\.py[^\n]*--extension\b')
+
+
+def _instruction_files() -> list[Path]:
+    files: list[Path] = []
+    for pattern in ("skills/**/SKILL.md", "agents/*.md"):
+        files.extend(sorted(ROOT.glob(pattern)))
+    return files
+
+
+def test_every_skill_invoked_script_is_runtime_allowlisted() -> None:
+    missing: list[str] = []
+    for path in _instruction_files():
+        text = path.read_text(encoding="utf-8")
+        rel = path.relative_to(ROOT).as_posix()
+        for line in text.splitlines():
+            if _EXTENSION_FLAG.search(line):
+                # Extension scripts are dispatched via extensions/<name>/scripts/
+                # and are not, and should not be, in ALLOWED_CORE_SCRIPTS.
+                continue
+            for match in _RUN_INVOCATION.finditer(line):
+                script = match.group(1)
+                if script not in runtime.ALLOWED_CORE_SCRIPTS:
+                    missing.append(f"{rel}: {script}")
+    assert not missing, (
+        "scripts invoked from SKILL.md/agent instructions but missing from "
+        "ALLOWED_CORE_SCRIPTS in scripts/runtime.py (claude-seo run would "
+        "refuse them): " + "; ".join(missing)
+    )
