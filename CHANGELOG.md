@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- A configured HTTP proxy is validated before it is exempted from the DNS-pinned
+  scope. The proxy host `requests` selects for a URL is exempt from the
+  fall-through check so the tunnel can be opened, but that host is read from the
+  environment, so `HTTPS_PROXY=http://169.254.169.254:3128` turned every audit
+  into a cloud-metadata read. The proxy now goes through the hostname blocklist
+  and `is_safe_ip` on every address it resolves to, and a proxy on loopback,
+  RFC 1918, RFC 6598, link-local, or a metadata address is refused with an error
+  naming the address. This narrows #280: a loopback CONNECT proxy is no longer
+  trusted. (#280, #295)
+- `CLAUDE_SEO_LOCAL_TARGETS` allows auditing a local dev server, a staging host,
+  or a machine reached over Tailscale, without the blanket "allow private"
+  switch that would follow any private URL found on a crawled page. It is a
+  comma-separated list of `host` or `host:port` entries, consulted only for the
+  first, top-level URL. Redirect targets, subresources, and the Playwright route
+  handler stay fail-closed; cloud metadata endpoints are refused even when
+  listed; `is_safe_ip` reads no environment. Unset, the policy is unchanged.
+  Documented in SECURITY.md and the `seo-technical` skill. (#211)
+
 ### Changed
 
 - Google Search guidance refreshed through 2026-09-10 from Google-owned sources:
@@ -14,6 +34,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   region-specific aggregator and supplier units are documented for the EEA, South
   Africa, and Turkiye (2026-09-08), AI Mode adds travel booking and price tracking
   (2026-08-27), and the CrUX pass-rate figure moves to the August 2026 dataset.
+- `safe_requests_get` and `safe_requests_head` send browser-like default headers
+  instead of `User-Agent: python-requests/x.y.z`, which managed WAFs answer with
+  403/406 and SSR frameworks answer with an empty client-side shell, both of
+  which callers were analysing as if they were the real document. The values are
+  `fetch_page.py`'s and now live in `url_safety` as the single source of truth,
+  with `fetch_page.py` importing them back. `Accept-Language` is not sent unless
+  the caller passes one: announcing `en-US` makes a multi-locale site serve its
+  English variant, which corrupts hreflang and international audits. (#200)
 
 ### Fixed
 
@@ -33,6 +61,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (hreflang) `<link>` tags case-insensitively, so `rel="Alternate"` or
   `REL="Canonical"` are no longer silently dropped. Credit to #269 for the
   report that prompted this investigation.
+- Every live fetch failed behind a configured HTTP proxy: the pinned resolver
+  refused to resolve the proxy's own address, so nothing left the process. The
+  proxy host `requests` selects for the URL is now exempt from that check, and
+  only that host. (#280)
 
 
 ## [2.2.6] - 2026-09-10
