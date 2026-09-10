@@ -311,7 +311,7 @@ def command_setup(args: argparse.Namespace) -> int:
                     )
                     browser_ready = True
                 except RuntimeError as exc:
-                    print(f"Browser setup incomplete: {exc}", file=sys.stderr)
+                    print(f"Browser setup incomplete: {_redact(str(exc))}", file=sys.stderr)
             _run_checked(
                 [
                     str(staged_python),

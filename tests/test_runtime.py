@@ -280,3 +280,44 @@ def test_redaction_covers_repr_quoted_home(monkeypatch: pytest.MonkeyPatch) -> N
     )
     assert "someone" not in redacted
     assert redacted.count("<home>") == 3
+
+
+def test_browser_setup_warning_is_redacted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # _run_checked now embeds the child's own stderr tail (#300), so a failed
+    # Chromium install can carry the home directory (playwright's cache path,
+    # a download URL, ...). That message is printed as a non-fatal warning
+    # rather than routed through the fatal-error handler, so it must be
+    # redacted at its own print site instead of relying on the one at the
+    # bottom of command_setup.
+    root = _fixture_root(tmp_path)
+    data = tmp_path / "data"
+    data.mkdir(parents=True, exist_ok=True)
+    (data / "runtime-state.json").write_text(
+        json.dumps(runtime._expected(root)), encoding="utf-8"
+    )
+    monkeypatch.setenv("CLAUDE_PLUGIN_DATA", str(data))
+    monkeypatch.setattr(runtime, "_root", lambda: root)
+    fake_home = tmp_path / "home" / "someone"
+    monkeypatch.setattr(runtime.Path, "home", classmethod(lambda cls: fake_home))
+
+    def fake_checked(argv: list[str], *, env: dict[str, str], stage: str) -> subprocess.CompletedProcess[str]:
+        if stage == "virtual environment creation":
+            staged = Path(argv[-1])
+            staged_python = runtime._venv_python(staged)
+            staged_python.parent.mkdir(parents=True)
+            staged_python.write_text("new", encoding="utf-8")
+        if stage == "Chromium installation":
+            raise RuntimeError(
+                "Chromium installation failed with exit code 1\n"
+                f"  Failed to download to {fake_home}/.cache/ms-playwright/chromium"
+            )
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(runtime, "_run_checked", fake_checked)
+    rc = runtime.command_setup(SimpleNamespace(skip_browser=False))
+    assert rc == 10
+    captured = capsys.readouterr()
+    assert str(fake_home) not in captured.err
+    assert "<home>" in captured.err
