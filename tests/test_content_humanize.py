@@ -69,3 +69,29 @@ def test_humanize_reports_zero_on_clean_text():
     assert result["cleaned"] == "Plain honest prose about roof repair."
     assert result["invisible_count"] == 0
     assert result["change_count"] == 0
+
+
+def test_zwnj_preserved_in_persian_orthography():
+    # ZWNJ between letters is orthographic in Persian (a "pseudo-space" that
+    # blocks glyph joining), not a hidden-text fingerprint. Deleting it
+    # changes the word's correct letter-joining shape.
+    for word in ("می‌رود", "کتاب‌ها"):
+        cleaned, removed = strip_invisible(word)
+        assert cleaned == word
+        assert removed == {}
+
+
+def test_zwj_preserved_in_devanagari_conjunct():
+    # ZWJ between letters requests an explicit half-form/conjunct in
+    # Devanagari; it is orthographic, not a watermark.
+    word = "कार्य‍कर्ता"
+    cleaned, removed = strip_invisible(word)
+    assert cleaned == word
+    assert removed == {}
+
+
+def test_stray_zwj_between_digits_still_stripped():
+    # A ZWJ with no letter or emoji neighbour is still a fingerprint.
+    cleaned, removed = strip_invisible("12‍34")
+    assert cleaned == "1234"
+    assert removed == {"zero-width-joiner": 1}

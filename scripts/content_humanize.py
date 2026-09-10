@@ -38,6 +38,7 @@ import argparse
 import json
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 # Replacements run in order. Each entry is (pattern, replacement, label).
@@ -160,10 +161,31 @@ _EMOJI_GLUE = {
 }
 
 
+def _is_emoji_like(ch: str) -> bool:
+    """True when ``ch`` is itself an emoji-ish symbol, not just a high codepoint.
+
+    Uses the Unicode general category (``So``, "symbol, other") plus the two
+    ranges that hold the bulk of pictographic and emoji-adjacent symbol
+    characters, instead of a blanket ``codepoint >= U+2100`` test, which also
+    matches CJK ideographs, Hangul, and letters in many other scripts.
+    """
+    if not ch:
+        return False
+    if unicodedata.category(ch) == "So":
+        return True
+    cp = ord(ch)
+    return (0x1F000 <= cp <= 0x1FAFF) or (0x2600 <= cp <= 0x27BF)
+
+
+def _is_letter(ch: str) -> bool:
+    """True when ``ch`` is a Unicode letter (any script)."""
+    return bool(ch) and unicodedata.category(ch).startswith("L")
+
+
 def _emoji_adjacent(prev: str, nxt: str) -> bool:
     """True when either neighbour is plausibly part of an emoji sequence."""
     for ch in (prev, nxt):
-        if ch and (ord(ch) >= 0x2100 or ch == "\u20e3"):
+        if ch and (_is_emoji_like(ch) or ch == "\u20e3"):
             return True
     return False
 
@@ -181,6 +203,12 @@ def strip_invisible(text: str) -> tuple[str, dict]:
         elif ch in _EMOJI_GLUE:
             prev = text[i - 1] if i else ""
             nxt = text[i + 1] if i + 1 < len(text) else ""
+            # ZWNJ/ZWJ are orthographic in Arabic, Persian, Urdu, Devanagari,
+            # Bengali, Tamil, and other scripts that use joining or conjunct
+            # forms: never delete them next to a letter in any script.
+            if ch in ("\u200c", "\u200d") and (_is_letter(prev) or _is_letter(nxt)):
+                out.append(ch)
+                continue
             if _emoji_adjacent(prev, nxt):
                 out.append(ch)
                 continue

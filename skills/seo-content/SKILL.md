@@ -144,8 +144,8 @@ For "humanize this", "remove watermarks", or "clean up this draft", run the
 bundled cleanup script on the user's own content:
 
 ```bash
-claude-seo run content_humanize.py draft.md -o cleaned.md
-cat draft.md | claude-seo run content_humanize.py --json
+"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run content_humanize.py draft.md -o cleaned.md
+cat draft.md | "${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run content_humanize.py --json
 ```
 
 Two deterministic passes, both logged in the JSON output:
