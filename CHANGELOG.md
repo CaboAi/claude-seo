@@ -12,6 +12,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The five judgment-heavy agents (`seo-content`, `seo-geo`, `seo-sxo`, `seo-cluster`,
   `seo-drift`) declare `model: opus`; the other thirteen stay on Sonnet. README
   documents the cost implication and how to override per agent (#268).
+- Applied the mechanical hunks from #196 ("ponytail cleanup") by hand: hoisted
+  three function-local `from urllib.parse import urlparse` imports to the top of
+  `validate_backlink_report.py`, and deleted `commoncrawl_graph.py`'s dead
+  `_stream_gz_lines` helper (zero callers) along with the `gzip`/`io` imports it
+  alone used. Left out the `hashlib.file_digest` rewrite (Python 3.11+ only;
+  `pyproject.toml` requires >=3.10) and narrowing `dataforseo_normalize.py`'s
+  `--module` choices, a compatibility change rather than a cleanup. Credit:
+  pookNast (#196).
+
+### Fixed
+
+- `_run_checked` discarded a failing setup stage's stderr/stdout, so a broken
+  venv or pip install reported only "failed with exit code 1" with nothing
+  actionable. It now surfaces a bounded tail of the child's own output, pip is
+  bootstrapped as its own stage (`venv --without-pip` + `ensurepip`) so its
+  diagnostics are no longer swallowed by `venv`, and home-directory redaction
+  covers repr-quoted and mixed-case forms child tracebacks print. Also fixed a
+  gap the same change opened: the non-fatal "Browser setup incomplete" warning
+  printed the raw exception instead of the redacted one, so a failing Chromium
+  install could leak the home directory through the one message that wasn't
+  routed through `_redact` (#300, Nordalux).
+- `extensions/dataforseo/install.ps1` and `extensions/ahrefs/install.ps1` merged
+  their MCP server entry with an embedded Python heredoc (`tempfile.mkstemp` +
+  `os.replace`), and `extensions/firecrawl/uninstall.ps1` wrote
+  `ConvertTo-Json -Depth 10` straight to `~/.claude.json` with no temp file. All
+  three now follow the native `ConvertTo-Json -Depth 100` + temp-file +
+  `Move-Item -Force` pattern v2.3.0 established in
+  `extensions/firecrawl/install.ps1`; `ahrefs/install.ps1` no longer requires
+  Python as a result.
+- The `anthropic-ai` crawler row v2.3.0 added to `skills/seo-geo/SKILL.md` and
+  `agents/seo-geo.md`, marked unverified, still does not appear on Anthropic's
+  crawler support article (confirmed by re-fetching it: only ClaudeBot,
+  Claude-User, and Claude-SearchBot are documented), so the row is removed
+  rather than kept as an unverifiable guess.
 
 ## [2.3.0] - 2026-09-10
 
