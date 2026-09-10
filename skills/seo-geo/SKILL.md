@@ -13,7 +13,7 @@ argument-hint: "[url]"
 license: MIT
 metadata:
   author: AgriciDaniel
-  version: "2.3.0"
+  version: "2.3.1"
   category: seo
 ---
 
@@ -160,7 +160,6 @@ Check `robots.txt` for these AI crawlers:
 | Claude-User | Anthropic | Claude browsing on a user's behalf (user-triggered) | no (user-triggered) |
 | PerplexityBot | Perplexity | Perplexity AI search | yes |
 | CCBot | Common Crawl | Training data (often blocked) | yes |
-| anthropic-ai | Anthropic | Legacy training token; unverified whether still active alongside ClaudeBot | unverified |
 | Bytespider | ByteDance | TikTok/Douyin AI | yes |
 | cohere-ai | Cohere | Cohere models | yes |
 | Google-Extended | Google | **Gemini/Vertex training & grounding only** (NOT Google Search) | yes |
@@ -174,10 +173,9 @@ Sources: [OpenAI crawlers](https://platform.openai.com/docs/bots),
 [Google crawlers overview](https://developers.google.com/search/docs/crawling-indexing/overview-google-crawlers),
 [Anthropic crawler support article](https://support.anthropic.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler),
 [Apple Applebot-Extended support article](https://support.apple.com/en-us/119829).
-The `anthropic-ai` row is **unverified**: it does not appear on Anthropic's current
-crawler support article (which documents only ClaudeBot, Claude-User, and
-Claude-SearchBot), so treat it as a legacy or third-party-reported token rather than
-a confirmed current one.
+Anthropic's current crawler support article documents only ClaudeBot, Claude-User,
+and Claude-SearchBot; it does not list `anthropic-ai`, so the previously-unverified
+`anthropic-ai` row has been removed rather than kept as a guess.
 
 **Recommendation:** Allow OAI-SearchBot, Claude-SearchBot, and PerplexityBot for AI
 search visibility. GPTBot, ClaudeBot, CCBot, and Applebot-Extended are training-only

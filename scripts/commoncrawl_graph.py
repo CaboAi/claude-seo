@@ -17,8 +17,6 @@ Usage:
 """
 
 import argparse
-import gzip
-import io
 import json
 import os
 import re
@@ -161,24 +159,6 @@ def _save_cache(domain: str, release: str, data: dict) -> None:
     data.setdefault("metadata", {})["cached_at"] = time.time()
     with open(cache_path, "w") as f:
         json.dump(data, f, indent=2)
-
-
-def _stream_gz_lines(url: str, timeout: int = 120):
-    """
-    Stream and decompress a gzipped text file line by line.
-
-    Downloads the file in chunks and decompresses on the fly to avoid
-    loading multi-GiB files into memory.
-
-    Yields:
-        Decoded text lines.
-    """
-    resp = requests.get(url, stream=True, timeout=timeout)
-    resp.raise_for_status()
-
-    decompressor = gzip.GzipFile(fileobj=io.BytesIO(resp.content))
-    for line in io.TextIOWrapper(decompressor, encoding="utf-8"):
-        yield line.rstrip("\n")
 
 
 def _stream_gz_chunked(url: str, target_domain: str, timeout: int = 120,
