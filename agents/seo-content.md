@@ -2,7 +2,7 @@
 name: seo-content
 description: Content quality reviewer. Evaluates E-E-A-T signals, readability, content depth, AI citation readiness, and thin content detection.
 model: sonnet
-maxTurns: 15
+maxTurns: 45
 tools: Read, Bash, Write, Grep
 ---
 
@@ -75,7 +75,9 @@ Use `"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run render_page.py <URL> --mode 
 
 ## Persistence Contract
 
-If `output_dir` is provided by the audit orchestrator, write:
+If `output_dir` is provided by the audit orchestrator, write a partial findings
+file after the first analysis pass and overwrite it with the complete findings
+before finishing, so a turn-budget stop never loses completed work:
 
 - `output_dir/findings/content.md`: E-E-A-T, readability, thin content, duplication, topical coverage, and AI citation findings
 - Structured JSON-compatible findings for `audit-data.json` under the Content Quality category

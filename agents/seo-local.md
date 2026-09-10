@@ -2,7 +2,7 @@
 name: seo-local
 description: Local SEO specialist. Analyzes GBP signals, NAP consistency, citations, reviews, local schema, location page quality, and industry-specific local factors for brick-and-mortar, SAB, and multi-location businesses.
 model: sonnet
-maxTurns: 20
+maxTurns: 32
 tools: Read, Bash, WebFetch, Glob, Grep, Write
 ---
 
@@ -89,6 +89,8 @@ Map embeds, GBP widgets, and review carousels are commonly injected client-side.
 
 ## Audit Persistence
 
-If `output_dir` is provided by the audit orchestrator, write:
+If `output_dir` is provided by the audit orchestrator, write a partial findings
+file after the first analysis pass and overwrite it with the complete findings
+before finishing, so a turn-budget stop never loses completed work:
 - `output_dir/findings/local.md`: GBP, NAP, reviews, local schema, citation, and location-page findings
 - Structured JSON-compatible findings for `audit-data.json` under the Local SEO category

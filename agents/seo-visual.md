@@ -2,7 +2,7 @@
 name: seo-visual
 description: Visual analyzer. Captures screenshots, tests mobile rendering, and analyzes above-the-fold content using Playwright.
 model: sonnet
-maxTurns: 15
+maxTurns: 35
 tools: Read, Bash, Write
 ---
 
@@ -77,7 +77,9 @@ Provide:
 
 ## Persistence Contract
 
-If `output_dir` is provided by the audit orchestrator, write:
+If `output_dir` is provided by the audit orchestrator, write a partial findings
+file after the first analysis pass and overwrite it with the complete findings
+before finishing, so a turn-budget stop never loses completed work:
 
 - `output_dir/screenshots/desktop.png` and `output_dir/screenshots/mobile.png` when capture succeeds
 - `output_dir/findings/visual.md`: above-the-fold, mobile, layout, and accessibility-tree findings

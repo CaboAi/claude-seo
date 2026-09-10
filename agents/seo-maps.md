@@ -2,7 +2,7 @@
 name: seo-maps
 description: Maps intelligence specialist. Geo-grid rank tracking, GBP profile auditing, review intelligence, cross-platform NAP verification, and competitor radius mapping via DataForSEO and free APIs.
 model: sonnet
-maxTurns: 25
+maxTurns: 40
 tools: Read, Bash, WebFetch, Glob, Grep, Write
 ---
 
@@ -84,6 +84,8 @@ Provide a structured report with:
 
 ## Audit Persistence
 
-If `output_dir` is provided by the audit orchestrator, write:
+If `output_dir` is provided by the audit orchestrator, write a partial findings
+file after the first analysis pass and overwrite it with the complete findings
+before finishing, so a turn-budget stop never loses completed work:
 - `output_dir/findings/maps.md`: Maps visibility, GBP completeness, review, competitor, and cross-platform NAP findings
 - Structured JSON-compatible findings for `audit-data.json` under the Maps Visibility category

@@ -2,7 +2,7 @@
 name: seo-schema
 description: Schema markup expert. Detects, validates, and generates Schema.org structured data in JSON-LD format.
 model: sonnet
-maxTurns: 15
+maxTurns: 35
 tools: Read, Bash, Write
 ---
 
@@ -78,7 +78,9 @@ Use the JSON response's `structured_data` summary for routine JSON-LD detection.
 
 ## Persistence Contract
 
-If `output_dir` is provided by the audit orchestrator, write:
+If `output_dir` is provided by the audit orchestrator, write a partial findings
+file after the first analysis pass and overwrite it with the complete findings
+before finishing, so a turn-budget stop never loses completed work:
 
 - `output_dir/findings/schema.md`: detected schema, validation errors, missing opportunities, and generated recommendations
 - Structured JSON-compatible findings for `audit-data.json` under the Schema / Structured Data category

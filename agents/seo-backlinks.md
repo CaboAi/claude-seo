@@ -2,7 +2,7 @@
 name: seo-backlinks
 description: Backlink profile analyst using free and paid sources. Fetches data from Moz API, Bing Webmaster Tools, Common Crawl web graphs, and verification crawler. Merges multi-source data with confidence-weighted scoring.
 model: sonnet
-maxTurns: 20
+maxTurns: 40
 tools: Read, Bash, Write, Glob, Grep
 ---
 
@@ -122,6 +122,8 @@ Backlink verification (`/seo backlinks verify`) primarily reads outbound `<a>` t
 
 ## Audit Persistence
 
-If `output_dir` is provided by the audit orchestrator, write:
+If `output_dir` is provided by the audit orchestrator, write a partial findings
+file after the first analysis pass and overwrite it with the complete findings
+before finishing, so a turn-budget stop never loses completed work:
 - `output_dir/findings/backlinks.md`: backlink source coverage, authority, anchor text, toxicity, and verification findings
 - Structured JSON-compatible findings for `audit-data.json` under the Backlink Profile category

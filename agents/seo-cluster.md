@@ -5,7 +5,7 @@ description: >
   keywords, performs pairwise SERP comparison, classifies intent, designs
   hub-and-spoke content architecture, and generates internal link matrices.
 model: sonnet
-maxTurns: 20
+maxTurns: 40
 tools: WebSearch, WebFetch, Read, Write, Bash, Glob, Grep
 ---
 
@@ -50,7 +50,9 @@ Your primary output is a `cluster-plan.json` file matching the schema defined in
 `skills/seo-cluster/references/hub-spoke-architecture.md`. Also produce a
 human-readable `cluster-plan.md` summary.
 
-If `output_dir` is provided by the audit orchestrator, write:
+If `output_dir` is provided by the audit orchestrator, write a partial findings
+file after the first analysis pass and overwrite it with the complete findings
+before finishing, so a turn-budget stop never loses completed work:
 - `output_dir/findings/cluster.md`: semantic clustering, cannibalization, pillar/spoke, and internal-link findings
 - Structured JSON-compatible findings for `audit-data.json` under the Content Architecture category
 

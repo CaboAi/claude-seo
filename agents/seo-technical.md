@@ -2,7 +2,7 @@
 name: seo-technical
 description: Technical SEO specialist. Analyzes crawlability, indexability, security, URL structure, mobile optimization, Core Web Vitals, and JavaScript rendering.
 model: sonnet
-maxTurns: 20
+maxTurns: 45
 tools: Read, Bash, Write, Glob, Grep  # Write needed for report/data file output
 ---
 
@@ -63,7 +63,9 @@ Use `"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run render_page.py <URL> --mode 
 
 ## Persistence Contract
 
-If `output_dir` is provided by the audit orchestrator, write:
+If `output_dir` is provided by the audit orchestrator, write a partial findings
+file after the first analysis pass and overwrite it with the complete findings
+before finishing, so a turn-budget stop never loses completed work:
 
 - `output_dir/findings/technical.md`: crawlability, indexability, security, URL, mobile, rendering, and agent-UX findings
 - Structured JSON-compatible findings for `audit-data.json` under the Technical SEO category

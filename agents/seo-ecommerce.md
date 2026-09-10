@@ -5,7 +5,7 @@ description: >
   Amazon marketplace visibility, identifies pricing gaps, and recommends product
   page optimizations. Spawned when e-commerce site detected during audits.
 model: sonnet
-maxTurns: 20
+maxTurns: 35
 tools: Read, Bash, Write, Glob, Grep
 ---
 
@@ -75,6 +75,8 @@ E-commerce sites overwhelmingly inject product schema client-side (Shopify, Mage
 
 ## Audit Persistence
 
-If `output_dir` is provided by the audit orchestrator, write:
+If `output_dir` is provided by the audit orchestrator, write a partial findings
+file after the first analysis pass and overwrite it with the complete findings
+before finishing, so a turn-budget stop never loses completed work:
 - `output_dir/findings/ecommerce.md`: product schema, marketplace, image, pricing, content, and internal-link findings
 - Structured JSON-compatible findings for `audit-data.json` under the E-commerce SEO category

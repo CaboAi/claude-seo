@@ -5,7 +5,7 @@ description: >
   page-type mismatches, derives user stories from intent signals, and scores pages
   from multiple persona perspectives. Identifies why well-optimized content fails to rank.
 model: sonnet
-maxTurns: 20
+maxTurns: 35
 tools: Read, Bash, WebFetch, WebSearch, Glob, Grep, Write
 ---
 
@@ -105,6 +105,8 @@ Search experience scoring needs the *rendered* DOM because users see what JS pro
 
 ## Audit Persistence
 
-If `output_dir` is provided by the audit orchestrator, write:
+If `output_dir` is provided by the audit orchestrator, write a partial findings
+file after the first analysis pass and overwrite it with the complete findings
+before finishing, so a turn-budget stop never loses completed work:
 - `output_dir/findings/sxo.md`: SERP intent, page-type mismatch, user-story, persona, and UX gap findings
 - Structured JSON-compatible findings for `audit-data.json` under the Search Experience category

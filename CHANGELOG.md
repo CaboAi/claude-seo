@@ -28,6 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no longer aborts on a marketplace/plugin install: it now also checks
   `${CLAUDE_PLUGIN_ROOT}` and the plugin cache before requiring the manual
   `~/.claude/skills/seo` layout. Fixes #189.
+- Raised `maxTurns` on all 16 agents `seo-audit` can spawn (`seo-technical`
+  20→45, `seo-content` 15→45, and thirteen others that were below 30) so a
+  large-site audit doesn't hit its turn budget before finishing. Every one of
+  those agents now writes a partial findings file after its first analysis
+  pass and overwrites it with the complete findings at the end, so a
+  turn-budget stop never throws away completed work; `seo-audit`'s
+  error-handling table documents the same contract for the orchestrator.
+  Fixes #177, #272.
 
 ## [2.2.6] - 2026-09-10
 

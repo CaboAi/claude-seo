@@ -5,7 +5,7 @@ description: >
   compares against stored snapshots to detect regressions. Reports changes with
   severity classification. Only spawned when a drift baseline exists for the URL.
 model: sonnet
-maxTurns: 15
+maxTurns: 30
 tools: Read, Bash, Write, Glob, Grep
 ---
 
@@ -64,6 +64,8 @@ For comparisons, present:
 
 ## Audit Persistence
 
-If `output_dir` is provided by the audit orchestrator, write:
+If `output_dir` is provided by the audit orchestrator, write a partial findings
+file after the first analysis pass and overwrite it with the complete findings
+before finishing, so a turn-budget stop never loses completed work:
 - `output_dir/findings/drift.md`: baseline availability, triggered rules, old/new values, and regression findings
 - Structured JSON-compatible findings for `audit-data.json` under the SEO Drift category

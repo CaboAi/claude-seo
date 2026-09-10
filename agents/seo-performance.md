@@ -2,7 +2,7 @@
 name: seo-performance
 description: Performance analyzer. Measures and evaluates Core Web Vitals and page load performance.
 model: sonnet
-maxTurns: 15
+maxTurns: 35
 tools: Read, Bash, Write
 ---
 
@@ -99,7 +99,9 @@ Provide:
 
 ## Persistence Contract
 
-If `output_dir` is provided by the audit orchestrator, write:
+If `output_dir` is provided by the audit orchestrator, write a partial findings
+file after the first analysis pass and overwrite it with the complete findings
+before finishing, so a turn-budget stop never loses completed work:
 
 - `output_dir/findings/performance.md`: evidence, scores, bottlenecks, and recommendations
 - Structured JSON-compatible findings for `audit-data.json` under the Performance category
