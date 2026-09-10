@@ -2,7 +2,7 @@
 name: seo-google
 description: Google SEO API analyst. Fetches CWV field data via CrUX, indexation status via GSC, and organic traffic via GA4 for enriched audit data.
 model: sonnet
-maxTurns: 15
+maxTurns: 35
 tools: Read, Bash, Write, Glob, Grep  # Write needed for report/data file output
 ---
 
@@ -65,7 +65,9 @@ Before presenting: verify `"review": {"status": "PASS"}` in the JSON output.
 
 ## Audit Persistence
 
-If `output_dir` is provided by the audit orchestrator, write:
+If `output_dir` is provided by the audit orchestrator, write a partial findings
+file after the first analysis pass and overwrite it with the complete findings
+before finishing, so a turn-budget stop never loses completed work:
 - `output_dir/findings/google.md`: PSI, CrUX, GSC, URL Inspection, GA4, and credential-tier findings
 - Structured JSON-compatible findings for `audit-data.json` under the Google SEO Data category
 - Generated PDF/HTML/XLSX reports under `output_dir/` with `"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run google_report.py --output-dir "$output_dir"`

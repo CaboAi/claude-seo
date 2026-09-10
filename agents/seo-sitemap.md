@@ -2,7 +2,7 @@
 name: seo-sitemap
 description: Sitemap architect. Validates XML sitemaps, generates new ones with industry templates, and enforces quality gates for location pages.
 model: sonnet
-maxTurns: 15
+maxTurns: 30
 tools: Read, Bash, Write, Glob
 ---
 
@@ -75,6 +75,8 @@ Provide:
 
 ## Audit Persistence
 
-If `output_dir` is provided by the audit orchestrator, write:
+If `output_dir` is provided by the audit orchestrator, write a partial findings
+file after the first analysis pass and overwrite it with the complete findings
+before finishing, so a turn-budget stop never loses completed work:
 - `output_dir/findings/sitemap.md`: sitemap coverage, XML validity, URL status, and quality gate findings
 - Structured JSON-compatible findings for `audit-data.json` under the Sitemap category

@@ -9,23 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-- A configured HTTP proxy is validated before it is exempted from the DNS-pinned
-  scope. The proxy host `requests` selects for a URL is exempt from the
-  fall-through check so the tunnel can be opened, but that host is read from the
-  environment, so `HTTPS_PROXY=http://169.254.169.254:3128` turned every audit
-  into a cloud-metadata read. The proxy now goes through the hostname blocklist
-  and `is_safe_ip` on every address it resolves to, and a proxy on loopback,
-  RFC 1918, RFC 6598, link-local, or a metadata address is refused with an error
-  naming the address. This narrows #280: a loopback CONNECT proxy is no longer
-  trusted. (#280, #295)
-- `CLAUDE_SEO_LOCAL_TARGETS` allows auditing a local dev server, a staging host,
-  or a machine reached over Tailscale, without the blanket "allow private"
-  switch that would follow any private URL found on a crawled page. It is a
-  comma-separated list of `host` or `host:port` entries, consulted only for the
-  first, top-level URL. Redirect targets, subresources, and the Playwright route
-  handler stay fail-closed; cloud metadata endpoints are refused even when
-  listed; `is_safe_ip` reads no environment. Unset, the policy is unchanged.
-  Documented in SECURITY.md and the `seo-technical` skill. (#211)
+## [Unreleased]
 
 ### Changed
 
@@ -65,6 +49,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   refused to resolve the proxy's own address, so nothing left the process. The
   proxy host `requests` selects for the URL is now exempt from that check, and
   only that host. (#280)
+- `unlighthouse_run.py` no longer passes `--max-routes` as `--scanner
+  '{"maxRoutes": N}'`, a CLI flag unlighthouse-ci's parser never reads (the
+  crawl silently ran uncapped). Route count and a new per-page timeout are
+  now set via a generated `unlighthouse.config.mjs` passed with
+  `--config-file`, confirmed against unlighthouse's CLI source and docs.
+  `ci-result.json` is parsed as the array the default `jsonSimple` reporter
+  actually writes, with a tolerant fallback for the `jsonExpanded` object
+  shape, instead of assuming a dict. `extensions/unlighthouse/install.sh`
+  no longer aborts on a marketplace/plugin install: it now also checks
+  `${CLAUDE_PLUGIN_ROOT}` and the plugin cache before requiring the manual
+  `~/.claude/skills/seo` layout. Fixes #189.
+- Raised `maxTurns` on all 16 agents `seo-audit` can spawn (`seo-technical`
+  20→45, `seo-content` 15→45, and thirteen others that were below 30) so a
+  large-site audit doesn't hit its turn budget before finishing. Every one of
+  those agents now writes a partial findings file after its first analysis
+  pass and overwrites it with the complete findings at the end, so a
+  turn-budget stop never throws away completed work; `seo-audit`'s
+  error-handling table documents the same contract for the orchestrator.
+  Fixes #177, #272.
 
 
 ## [2.2.6] - 2026-09-10

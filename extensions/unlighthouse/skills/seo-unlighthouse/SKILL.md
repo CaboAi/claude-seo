@@ -33,12 +33,21 @@ url_safety pre-flight and subprocess timeout management.
 
 ## Output handling
 
-The wrapper reads `ci-result.json` from the Unlighthouse output dir and
-returns it parsed. Aggregate fields:
+The wrapper reads `ci-result.json` from the Unlighthouse output dir, normalizes
+it (the default `jsonSimple` reporter writes a flat JSON array of per-route
+results; a tolerant fallback also accepts the `jsonExpanded` object shape),
+and returns:
 
-- `score.performance` (median across audited routes)
-- `score.accessibility`, `score.bestPractices`, `score.seo`
-- Per-route breakdown is available in `<output_dir>/ci-result.json`
+- `route_count`: number of routes actually audited
+- `aggregate_scores`: median score per Lighthouse category across all audited
+  routes (`performance`, `accessibility`, `best-practices`, `seo`)
+- `routes`: the per-route breakdown (also on disk at `<output_dir>/ci-result.json`)
+
+Route cap and per-page timeout are set via a generated `unlighthouse.config.mjs`
+passed with `--config-file` (the only CLI-documented way to set `scanner.maxRoutes`;
+unlighthouse-ci has no `--max-routes` flag). Use `--page-timeout <seconds>` to
+change the per-page Lighthouse task timeout (default 60s); this is separate
+from the overall `--timeout` subprocess guard (default 600s).
 
 ## Cross-skill delegation
 
