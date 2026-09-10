@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Google Search guidance refreshed through 2026-09-10 from Google-owned sources:
+  site reputation abuse enforcement now differs for EEA searchers (2026-08-28),
+  region-specific aggregator and supplier units are documented for the EEA, South
+  Africa, and Turkiye (2026-09-08), AI Mode adds travel booking and price tracking
+  (2026-08-27), and the CrUX pass-rate figure moves to the August 2026 dataset.
+
 ## [2.2.6] - 2026-09-10
 
 ### Security

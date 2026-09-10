@@ -236,6 +236,12 @@ New standard (December 2025) for machine-readable AI licensing terms.
 > well in classic Search feeds AI Overviews, but AI Mode draws from a broader pool
 > where freshness and entity authority outweigh raw position. Score both.
 >
+> **AI Mode is also a booking surface (2026-08-27).** Flight price tracking
+> with email alerts (180+ countries and territories), hotel booking through
+> integrated partners, and fares shown in points or miles now happen inside
+> AI Mode. Travel and hospitality clients should check partner eligibility;
+> nothing here is a documented ranking change.
+>
 > **UX is now unified, surfaces still distinct.** At Google I/O 2026 (2026-05-19)
 > Google merged AI Overviews and AI Mode into "one seamless AI Search experience"
 > (question → AI Overview → follow-up in AI Mode) with a new intelligent Search
