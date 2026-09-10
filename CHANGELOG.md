@@ -7,110 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.6] - 2026-09-10
+
+### Security
+
+- `commoncrawl_graph.py` no longer writes outside its cache directory: the `--release`
+  value was interpolated raw into the cache filename, so `--release ../../../../tmp/x`
+  escaped the cache directory and `_save_cache` wrote there. Malformed releases are now
+  rejected at the CLI and path containment is asserted.
+- `domain_history.py` no longer follows an unvalidated WHOIS referral. The IANA
+  `refer:` host is resolved and validated through `url_safety` and dialled at the
+  pinned address; an unusable referral degrades to IANA's own answer.
+- `url_safety.is_safe_ip` now refuses the RFC 6598 shared address space
+  (100.64.0.0/10), where Alibaba Cloud serves instance metadata, and judges
+  IPv4-mapped IPv6 literals by their embedded address. This also refuses Tailscale
+  addresses; see SECURITY.md.
+- WeasyPrint floor raised to 70.0 (PYSEC-2026-3940); requests, google-auth, courlan,
+  playwright, and numpy floors raised to current releases. `pip-audit` passes.
+- SECURITY.md describes only reporting channels that exist: private vulnerability
+  reporting is enabled and the unreachable email fallback is gone.
+
 ### Added
+
+- The plugin installs from the claude.ai-hosted marketplace. Hosted sync rejects any
+  plugin with a top-level `bin/` directory, so the launcher moved to
+  `scripts/claude-seo` and every skill, agent, and doc calls it as
+  `"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run <script.py>`. Manual installs copy the
+  launcher to `~/.claude/skills/seo/scripts/claude-seo` and rewrite that token to the
+  absolute path. A layout test keeps `bin/` from coming back. Fixes #298 and #199.
+- CI runs the full suite on Windows and macOS, audits `requirements.txt` with
+  `pip-audit`, and no longer swallows a failed dependency install in the v2 audit.
+- `CLAUDE_SEO_CONFIG_DIR` overrides the config and ledger location, so the ledger tests
+  run against an isolated file. `BANANA_HOME` does the same for the Banana ledger.
+- `preload_check.py --fail-under N` turns the score into an opt-in gate.
+- Regression coverage for the backlink report validator, the schema-hook UTF-8 output,
+  CRLF checkouts, PSI null category scores, ledger concurrency, the hosted plugin layout,
+  and every ledger kind accepted by `seo_updates.py`.
 
 ### Changed
 
-### Fixed
-
-- The plugin now installs from the claude.ai-hosted marketplace. Hosted sync
-  rejects any plugin that ships a top-level `bin/` directory with
-  `marketplace_sync_bin_directory_not_allowed`, which is exactly what the
-  launcher lived in, so the listing could never sync. `bin/claude-seo` moved to
-  `scripts/claude-seo`, where it resolves `runtime.py` as a sibling, and every
-  skill, agent, and doc now calls it through the documented plugin-relative
-  form `"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run <script.py>` instead of
-  relying on undocumented `bin/` PATH injection. Manual installs are unchanged
-  in behaviour: `install.sh` and `install.ps1` copy the launcher to
-  `~/.claude/skills/seo/scripts/claude-seo` and rewrite that canonical token to
-  the absolute path in the Markdown they install. Fixes #298; supersedes #199.
-- `seo-technical` no longer treats dynamic rendering as a valid setup to verify. Google
-  documents it as a workaround rather than a recommended solution, so the audit step now
-  flags it as technical debt. Adds a rendering-strategy table (SSR / SSG / CSR) and a
-  preferred-framework list so the skill recommends a target state rather than only naming
-  the anti-pattern. Detection logic in `fetch_page.py` is unchanged: identifying dynamic
-  rendering is still useful, it is only the recommendation that was stale.
-- **The Banana cost ledger had the same defect, with no locking at all.**
-  `extensions/banana/scripts/cost_tracker.py` read and wrote `~/.banana/costs.json` with
-  no file locking on any platform and a non-atomic write. Measured 4 entries lost out of
-  20 concurrent `log` calls, and 3 of those processes crashed outright with
-  `JSONDecodeError` after reading a half-written file. It is also harder to notice than
-  the DataForSEO case: this ledger carries running aggregates (`total_cost`,
-  `total_images`, `daily`) incremented in the same write as the entry, so a lost write
-  drops both together and the file still looks internally consistent. Given the same
-  treatment: one exclusive lock across the whole read-modify-write in `log`, atomic
-  writes, `msvcrt` fallback with a hard failure when no locking primitive exists, and a
-  corrupt ledger that fails closed instead of raising a bare traceback. `reset` takes the
-  lock but deliberately does not read first, so it still works as the recovery path for a
-  corrupt ledger. `BANANA_HOME` overrides the ledger and pricing paths for the new
-  `tests/test_banana_cost_tracker.py`.
-- **Spend ledger lost concurrent writes (`dataforseo_costs.py`).** The ledger took its
-  file lock twice, once to read and once to write, and released it in between, so two
-  concurrent `log` calls both read the same ledger and the second silently overwrote the
-  first. Measured 3 entries lost out of 20 concurrent writes, with 1 to 3 lost on every
-  repeat run. This is not platform-specific. It matters because `seo-audit` fans out to
-  up to 15 parallel specialists, three of which call DataForSEO and each of which logs
-  after every call, so the ledger under-reported most during the runs that spend the
-  most. One exclusive lock now spans the entire read-modify-write in both `log` and
-  `reset`.
-- **No file locking at all on Windows.** The module set `fcntl = None` when the import
-  failed and then took every unlocked code path, so Windows ran the ledger with no
-  locking whatsoever. Locking now falls back to `msvcrt`, and when neither primitive is
-  available the operation fails loudly rather than proceeding unlocked.
-- **A corrupt ledger silently reset the budget to zero.** The non-atomic
-  `open(..., "w")` write could leave a truncated file if the process died mid-write, and
-  the reader caught `JSONDecodeError` and returned an empty ledger, which the next write
-  then persisted, discarding the whole spend history. Ledger writes are now atomic
-  (tempfile plus `os.replace`, matching the idiom already used in `google_auth.py`), and
-  an unparseable ledger fails closed with the file left in place for inspection.
-- **`CLAUDE_SEO_CONFIG_DIR`** now overrides the config and ledger location, so the new
-  `tests/test_dataforseo_costs.py` concurrency and durability tests run against an
-  isolated ledger instead of the operator's real spend history.
-- The Common-Crawl-only no-score rule is now enforced instead of merely stated. The
-  `seo-backlinks` skill said not to produce a numeric health score when only Common Crawl
-  data is available, while `skills/seo/references/free-backlink-sources.md` told the agent
-  to "cap the maximum health score at 70/100" in the same case. The reference gave the more
-  actionable of two contradictory instructions, which is the likely reason the rule was
-  violated in practice. The guidance now agrees across both files, and
-  `validate_backlink_report.py` gains a `source_score_consistency` check that fails a
-  report carrying a number with no scoreable source (Moz, Bing, or DataForSEO), or a
-  `source: not-assessed` finding carrying a score.
-- `preload_check.py` exited 1 on every successful run that scored below a
-  hard-coded 75, so `set -e` scripts and CI steps aborted on healthy pages. A
-  completed analysis now exits 0; the gate is opt-in through `--fail-under N`.
-  Exit 2 for a URL refused by url_safety is unchanged. (#281)
-- CI now runs the full test suite on Windows and macOS, not just the three
-  platform-neutral modules. The tests that assert POSIX mode bits skip on
-  Windows instead of failing.
+- `seo-technical` treats dynamic rendering as a workaround to flag, not a target state,
+  and recommends SSR, SSG, or CSR with a preferred-framework list.
+- The `seo-backlinks` skill and `free-backlink-sources.md` no longer contradict each
+  other on Common-Crawl-only reports: no numeric score is produced, and
+  `validate_backlink_report.py` fails a report that carries one.
+- The Repository Topology section of CLAUDE.md describes the two single-remote
+  checkouts and the cherry-pick promotion flow actually in use.
+- The three `test_sync_flow.py` tests that call the live GitHub API run only when
+  `CLAUDE_SEO_NETWORK_TESTS=1`; both CI test jobs set it with `GH_TOKEN`.
 
 ### Fixed
-- The schema-hook policy tests decoded the hook's UTF-8 output with the locale
-  codec, which is cp1252 on Windows and cannot represent the emoji markers.
-- `consistency_check.py` reported every FLOW-locked prompt file as a hash
-  mismatch on a stock Windows clone: Git for Windows checks the files out with
-  CRLF (`core.autocrlf=true`) while the lock hashes LF content. The check now
-  folds CRLF before hashing, so the lock only fails on real content changes.
-- `url_safety.is_safe_ip` accepted the RFC 6598 shared address space
-  (100.64.0.0/10), which Python's `ipaddress` does not count as private. Alibaba
-  Cloud serves instance metadata at 100.100.100.200, so a crafted URL or DNS
-  answer in that range slipped past the SSRF guard. The range is now refused,
-  and IPv4-mapped IPv6 literals are judged as their embedded IPv4 address.
-  Note: 100.64.0.0/10 is also the Tailscale range, so audits of a staging site
-  reached over Tailscale lose access; see SECURITY.md.
-- `commoncrawl_graph.py` no longer writes outside its cache directory. The
-  `--release` value was interpolated raw into the cache filename, so
-  `--release ../../../../tmp/x` escaped the cache dir and `_save_cache`'s
-  `open(..., "w")` followed it. The value also reaches a download URL, so a
-  malformed release is now rejected at the CLI rather than silently rewritten
-  (which would leave the cache key disagreeing with what was fetched); path
-  components are sanitised and containment asserted as defence in depth.
-- `domain_history.py` no longer follows an unvalidated WHOIS referral. It asks
-  IANA for the authoritative server and dialled whatever host came back, over
-  plaintext port 43: so anyone able to tamper with that response could point
-  it at an internal address and use it to probe the operator's private network.
-  The referral is now resolved and validated through `url_safety` and the
-  connection is made to the pinned address; an unusable referral degrades to
-  IANA's own answer rather than blanking the lookup.
+
+- The DataForSEO and Banana cost ledgers lost concurrent writes and could reset spend
+  history after a truncated write. One exclusive lock now spans each read-modify-write,
+  writes are atomic, Windows falls back to `msvcrt`, and a corrupt ledger fails closed.
+- `pagespeed_check.py` raised `TypeError` when a Lighthouse category returned a null
+  score; the category is now skipped and the page is kept.
+- `preload_check.py` exited 1 on every successful run that scored below 75. A completed
+  analysis exits 0. (#281)
+- `consistency_check.py` reported every FLOW-locked prompt as a hash mismatch on CRLF
+  checkouts; it folds CRLF before hashing.
+- `seo_updates.py --kind documentation` was rejected by argparse while the ledger used
+  that kind; the CLI and the schema now share one list.
+- Optional Google, Bing, and rendering dependencies missing at import time no longer
+  abort the whole pytest session (`pytest.importorskip` in the affected modules).
+- The schema-hook tests decode the hook's UTF-8 output explicitly instead of through the
+  locale codec, which is cp1252 on Windows.
 
 ## [2.2.5] - 2026-08-25
 

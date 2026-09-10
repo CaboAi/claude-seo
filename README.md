@@ -338,6 +338,7 @@ Test coverage grew from 39 (v1.9.9) to 410 across the v2 line; the url_safety su
 - **v2.2.3 (July 2026): prompt-hygiene alignment.** Normalized emphasis and punctuation across the prompt surface without changing behavior, routing, or output contracts.
 - **v2.2.4 (July 2026): community maintenance.** Added the managed cross-platform runtime and safe sitemap discovery, repaired GSC pagination and totals, replaced removed Bing endpoints, fixed extension and Windows portability gaps, and reconciled every open issue and pull request.
 - **v2.2.5 (August 2026): reliability and Google-currency hardening.** Fixed manual-install data packaging and lxml runtime imports, hardened JSON-LD graphs and rendered-page accessibility analysis, enforced managed-runtime command references, and refreshed Google Search and Lighthouse guidance through August 25.
+- **v2.2.6 (September 2026): security and hosted-install patch.** Closed a cache-path traversal and a WHOIS referral SSRF, refused the RFC 6598 range, moved the launcher to `scripts/` so the claude.ai-hosted marketplace accepts the plugin, raised dependency floors past PYSEC-2026-3940, locked the cost ledgers, and added Windows, macOS, and pip-audit CI.
 
 ## Limitations
 

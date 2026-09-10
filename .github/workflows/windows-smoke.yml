@@ -18,7 +18,7 @@ on:
       target_ref:
         description: "Released tag or main branch to install"
         required: true
-        default: "v2.2.5"
+        default: "v2.2.6"
         type: string
 
 permissions:
@@ -37,7 +37,7 @@ jobs:
       - id: ref
         name: Validate released source ref
         env:
-          TARGET_REF: ${{ inputs.target_ref || 'v2.2.5' }}
+          TARGET_REF: ${{ inputs.target_ref || 'v2.2.6' }}
         shell: bash
         run: |
           set -euo pipefail

@@ -1,7 +1,7 @@
 """Lighthouse emits `score: null` for categories it could not evaluate
 (scoreDisplayMode "error" or "notApplicable"). `cat_data.get("score", 0)`
 only defaults on a *missing* key, so an explicit null reached the multiply
-and raised TypeError, losing the whole PSI run — including the categories
+and raised TypeError, losing the whole PSI run: including the categories
 that did score.
 """
 

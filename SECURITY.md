@@ -59,6 +59,8 @@ claude-seo is a research and audit toolkit that runs on a user's workstation. It
 - **IPv6-only audit targets.** The strict validator queries `family=AF_INET` for the initial resolution. Hosts with AAAA records only will surface as "DNS resolution failed". This is **fail-closed** by design — we'd rather refuse than connect to an unvalidated IPv6 endpoint. Tracked for a future patch (full dual-stack pinning, similar to the Playwright handler which already uses `AF_UNSPEC`).
 - **Windows file permissions.** `os.fchmod(fd, 0o600)` is a no-op on Windows for non-ACL filesystems. Users on Windows should rely on per-user directory ACLs instead of POSIX mode bits.
 
+- **RFC 6598 (100.64.0.0/10) is refused.** Cloud providers serve instance metadata in this range, so `url_safety` treats it like RFC 1918. Tailscale also allocates from it: a staging site reached over Tailscale cannot be audited with the default policy. There is no escape hatch yet; an explicit local-target allowlist is planned.
+
 ## Security-relevant code paths
 
 If you are auditing, these are the high-leverage files:

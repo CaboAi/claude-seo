@@ -1,5 +1,5 @@
 """
-Tests for scripts/dataforseo_costs.py — spend-ledger integrity.
+Tests for scripts/dataforseo_costs.py: spend-ledger integrity.
 
 Regression cover for the lost-update race: the ledger used to take its file
 lock twice, once to read and once to write, and drop it in between, so two
@@ -43,7 +43,7 @@ def _entries(config_dir: Path) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# concurrency — the reported bug
+# concurrency: the reported bug
 # ---------------------------------------------------------------------------
 
 

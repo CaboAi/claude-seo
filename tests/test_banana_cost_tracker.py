@@ -1,5 +1,5 @@
 """
-Tests for extensions/banana/scripts/cost_tracker.py — cost-ledger integrity.
+Tests for extensions/banana/scripts/cost_tracker.py: cost-ledger integrity.
 
 Same defect class as tests/test_dataforseo_costs.py, and worse here: this
 ledger had no file locking at all, non-atomic writes, and running aggregates
