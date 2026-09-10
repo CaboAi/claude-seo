@@ -4,9 +4,9 @@
 
 If you discover a security vulnerability, please report it responsibly. Do **not** open a public issue.
 
-1. Open a private [GitHub Security Advisory](https://github.com/AgriciDaniel/claude-seo/security/advisories/new) on this repository (preferred channel).
-2. As a fallback, email the maintainer at the address listed in [`CITATION.cff`](CITATION.cff).
-3. Encrypt sensitive disclosures if you can. Request the maintainer's PGP key in the advisory or email — the key fingerprint is published in advisory threads on first request and is rotated yearly.
+1. Open a private [GitHub Security Advisory](https://github.com/AgriciDaniel/claude-seo/security/advisories/new) on this repository. Private vulnerability reporting is enabled, so the "Report a vulnerability" button on the Security tab opens the same form.
+2. If the advisory form is unavailable to you, open a public issue titled "Security contact request" with no technical detail. The maintainer will reply with a private channel.
+3. Encrypt sensitive disclosures if you can. Request the maintainer's PGP key in the advisory thread; the fingerprint is shared there on first request and rotated yearly.
 
 When reporting, please include:
 

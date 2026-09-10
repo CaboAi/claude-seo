@@ -237,9 +237,10 @@ Part of the Claude Code skill family:
 
 ## Repository Topology (public + private)
 
-This project is mirrored across two GitHub remotes that share git history.
-Both originate from the same local checkout; neither is a GitHub fork of
-the other (different orgs, no parent/child relationship in the GitHub UI).
+This project is mirrored across two GitHub remotes with shared historical
+ancestry. Reviewed back-ports, private-only research, and marketplace branding
+mean their release commits can have different SHAs. Neither repository is a
+GitHub fork of the other.
 
 | Remote | URL | Visibility | Role |
 |---|---|---|---|
@@ -253,17 +254,15 @@ Daily development:
 - `git push aimh <branch>` to publish work-in-progress to the private repo
   (Dependabot, Actions, and CI run there).
 
-Promoting to public on release:
-1. Merge `v2` into local `main` when ready to release (fast-forward).
-2. Tag the release locally (`git tag -a vX.Y.Z`).
-3. Push the tag and main to **both** remotes in this order:
-   - First: `git push aimh main && git push aimh vX.Y.Z`
-   - Then: `git push origin vX.Y.Z && git push origin main`
-   - The "tag before merge" sequence (see `feedback_push_caution` memory)
-     applies on `origin` to avoid the `curl|bash` outage window where
-     users pull a tag that doesn't yet point at code on `main`.
-4. `gh release create vX.Y.Z --repo AgriciDaniel/claude-seo` (public-only).
-5. `/release-blog` to publish the release post.
+Promoting reviewed release changes:
+1. Use an isolated clean worktree from the target repository branch.
+2. Fast-forward only when ancestry proves it is safe. Otherwise cherry-pick
+   the exact reviewed commits with `-x` and resolve only documented divergence.
+3. Run the full validation suite and compare the private/public release trees.
+4. Create an annotated repository-specific tag after validation.
+5. Push private changes first. Push public changes only with explicit release
+   authorization, with the public tag available before the installer moves.
+6. Create the GitHub Release and release post on the public repository only.
 
 ### Safety rules
 
@@ -271,12 +270,10 @@ Promoting to public on release:
   pushes are user-authorized per-release.
 - **`aimh` accepts day-to-day pushes.** No release-gate ceremony required
   for the private remote.
-- **Tags push to private first.** Historical pre-release illustration: v2.0.0
-  once lived on `aimh` before `origin`. Before the authorized v2.2.5 release,
-  released tags through v2.2.4 are on both remotes. Verify v2.2.5 on both
-  remotes after publication.
-- **History stays shared.** Never rewrite history on either remote with
-  force-push unless explicitly authorized for that specific operation.
+- **v2.2.5 is tagged on both repositories.** Each tag points to that
+  repository's reviewed release commit.
+- **Never force-sync the histories.** Preserve reviewed divergence and never
+  rewrite either remote without explicit per-operation authorization.
 
 ### Verifying the topology
 
@@ -284,9 +281,10 @@ Promoting to public on release:
 # Both remotes configured
 git remote -v        # expects: origin (public) + aimh (private)
 
-# Both share main HEAD
+# Compare heads and then audit the documented divergence. Equal SHAs are not
+# expected after repository-specific back-ports.
 git ls-remote --heads aimh main
-git ls-remote --heads origin main   # origin = aimh/main + 1 public-branding commit (intentional; see docs/WORKFLOW-public-private.md)
+git ls-remote --heads origin main
 ```
 
 Full workflow reference: `docs/WORKFLOW-public-private.md`.
