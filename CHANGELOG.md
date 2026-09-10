@@ -22,8 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (100.64.0.0/10), where Alibaba Cloud serves instance metadata, and judges
   IPv4-mapped IPv6 literals by their embedded address. This also refuses Tailscale
   addresses; see SECURITY.md.
-- WeasyPrint floor raised to 70.0 (PYSEC-2026-3940); requests, google-auth, courlan,
-  playwright, and numpy floors raised to current releases. `pip-audit` passes.
+- WeasyPrint floor raised to 70.0 (PYSEC-2026-3940) and requests to 2.34.2
+  (CVE-2026-25645). `pip-audit` passes.
 - SECURITY.md describes only reporting channels that exist: private vulnerability
   reporting is enabled and the unreachable email fallback is gone.
 
@@ -46,6 +46,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Dependency floors raised by Dependabot: google-auth 2.56.2, courlan 1.4.0,
+  playwright 1.62.0, numpy 2.2.6 (a major bump from 1.26; matplotlib moves to 3.9.0,
+  the first line that supports numpy 2).
 - `seo-technical` treats dynamic rendering as a workaround to flag, not a target state,
   and recommends SSR, SSG, or CSR with a preferred-framework list.
 - The `seo-backlinks` skill and `free-backlink-sources.md` no longer contradict each

@@ -209,7 +209,7 @@ claude-seo/
 ## Report Generation Rules
 
 - **All SEO reports must use `scripts/google_report.py`** as the canonical report generator
-- **Dependencies**: `matplotlib>=3.8.0` (charts) + `weasyprint>=61.0` (HTML-to-PDF), both in `requirements.txt`
+- **Dependencies**: `matplotlib>=3.8.0` (charts) + `weasyprint>=70.0` (HTML-to-PDF), both in `requirements.txt`
 - **Format**: A4 PDF via WeasyPrint + matplotlib charts at 200 DPI
 - **Style**: Clean white title page with navy (#1e3a5f) accent, Times New Roman body font
 - **Color palette**: Navy #1e3a5f (headers), dark gold #b8860b (accents), forest green #2d6a4f (pass), warm amber #d4740e (warnings), deep red #c53030 (fail), warm cream #faf9f7 (backgrounds)
