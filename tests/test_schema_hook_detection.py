@@ -153,3 +153,68 @@ def test_foreign_context_is_still_reported(tmp_path: Path) -> None:
     result = _run(tmp_path, "page.html", head)
     assert result.returncode == 1
     assert "@context should be" in result.stdout
+
+
+# --- tokenizer regressions (a quoted attribute value may contain ">") ------
+
+
+def test_two_plain_ldjson_blocks_are_both_detected(tmp_path: Path) -> None:
+    head = (
+        f'<script type="application/ld+json">{VALID}</script>'
+        f'<script type="application/ld+json">{RETIRED}</script>'
+    )
+    result = _run(tmp_path, "page.html", head)
+    assert result.returncode == 2
+    assert "Block 2" in result.stdout
+    assert "ClaimReview" in result.stdout
+
+
+def test_block_with_nonce_and_id_is_validated(tmp_path: Path) -> None:
+    head = f'<script id="ld-schema" type="application/ld+json" nonce="r4nd0m">{RETIRED}</script>'
+    result = _run(tmp_path, "page.html", head)
+    assert result.returncode == 2
+    assert "ClaimReview" in result.stdout
+
+
+def test_attribute_value_containing_angle_bracket_is_detected(tmp_path: Path) -> None:
+    """A ``[^>]*`` attribute scan ends the tag at the embedded ">", truncating
+    the real JSON-LD body. At the pre-tokenizer PR head this exited 1 (Invalid
+    JSON) instead of recognizing and validating the block.
+    """
+    head = f'<script type="application/ld+json" data-cond="a>b">{VALID}</script>'
+    result = _run(tmp_path, "page.html", head)
+    assert result.returncode == 0
+    assert result.stdout == ""
+
+
+def test_jsx_json_stringify_inside_ldjson_script_is_not_flagged(tmp_path: Path) -> None:
+    head = '<script type="application/ld+json">{JSON.stringify(schema)}</script>'
+    result = _run(tmp_path, "page.jsx", head)
+    assert result.returncode == 0
+    assert result.stdout == ""
+
+
+def test_renal_replacement_therapy_string_is_not_flagged(tmp_path: Path) -> None:
+    head = (
+        '<script type="application/ld+json">'
+        '{"@context":"https://schema.org","@type":"MedicalTherapy",'
+        '"name":"Renal replacement therapy"}'
+        "</script>"
+    )
+    result = _run(tmp_path, "page.html", head)
+    assert result.returncode == 0
+    assert result.stdout == ""
+
+
+def test_top_level_graph_is_detected(tmp_path: Path) -> None:
+    head = (
+        '<script type="application/ld+json">'
+        '{"@context":"https://schema.org","@graph":['
+        '{"@type":"Organization","name":"X"},'
+        f"{RETIRED}"
+        "]}"
+        "</script>"
+    )
+    result = _run(tmp_path, "page.html", head)
+    assert result.returncode == 2
+    assert "ClaimReview" in result.stdout

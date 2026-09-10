@@ -53,8 +53,17 @@ BARE_PLACEHOLDER_RE = re.compile(r"\bREPLACE(?:_[A-Z]+)*\b")
 # The previous pattern required ``type`` to be the first and only attribute, so
 # blocks carrying a CSP ``nonce``, an ``id`` or ``data-*`` attributes, or an
 # unquoted type value were skipped without validation.
+#
+# The attribute group is a small tokenizer, not a plain ``[^>]*``: it consumes a
+# double-quoted value, a single-quoted value, or a run of characters that is
+# neither a quote nor ``>``. A ``[^>]*`` scan ends the tag at the first ``>`` it
+# sees, quoted or not, so an attribute value containing ``>`` (``data-cond="a>b"``,
+# a templated nonce) truncated the tag early and fed the remainder of the
+# attributes plus the real body to the JSON parser as garbage. Treating a quoted
+# span as atomic keeps an embedded ``>`` from ending the tag prematurely.
+_ATTRS_RE = r'(?:"[^"]*"|\'[^\']*\'|[^">])*'
 SCRIPT_TAG_RE = re.compile(
-    r"<script\b([^>]*)>(.*?)</script\s*>", re.DOTALL | re.IGNORECASE
+    r"<script\b(" + _ATTRS_RE + r")>(.*?)</script\s*>", re.DOTALL | re.IGNORECASE
 )
 LD_JSON_TYPE_RE = re.compile(
     r"""(?:^|\s)type\s*=\s*"""
