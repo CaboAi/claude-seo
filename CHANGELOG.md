@@ -31,6 +31,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sequence under PowerShell Core (`pwsh`); a parallel job now runs the same
   steps under Windows PowerShell 5.1 (`shell: powershell`), which is what
   actually caught #207.
+- The dataforseo, firecrawl, ahrefs, and banana extension installers wrote
+  their MCP server block to `~/.claude/settings.json`, a key Claude Code does
+  not read from that file, so the server never loaded and reinstalling could
+  not fix it. They now write `~/.claude.json` (the file `claude mcp add`
+  writes) across install/uninstall scripts, banana's Python helpers, and the
+  setup docs. `bing-webmaster`, `profound`, and `seranking` were left alone:
+  they write the `env` key, which settings.json does support (#204).
+- `extensions/firecrawl/install.ps1` and `extensions/banana/scripts/
+  setup_mcp.py` now write `~/.claude.json` atomically (temp file in the same
+  directory, then `Move-Item -Force` / `os.replace`), and the PowerShell
+  serialisation depth is raised from 10 to 100 so an existing `~/.claude.json`
+  with deeply nested config round-trips intact instead of being flattened.
 
 ## [2.2.6] - 2026-09-10
 

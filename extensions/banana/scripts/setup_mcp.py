@@ -16,6 +16,7 @@ Usage:
 import json
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 SETTINGS_PATH = Path.home() / ".claude.json"
@@ -32,10 +33,28 @@ def load_settings() -> dict:
 
 
 def save_settings(settings: dict) -> None:
-    """Save Claude Code ~/.claude.json."""
+    """Save Claude Code ~/.claude.json atomically.
+
+    ~/.claude.json is shared with Claude Code itself and other installers, so
+    a write is staged to a temp file in the same directory and swapped into
+    place with ``os.replace`` (atomic on POSIX and Windows). This avoids a
+    reader ever observing a truncated or partially written file, and avoids
+    corrupting the file if this process is interrupted mid-write.
+    """
     SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(SETTINGS_PATH, "w") as f:
-        json.dump(settings, f, indent=2)
+    fd, tmp_path = tempfile.mkstemp(
+        prefix=".claude.json.", suffix=".tmp", dir=str(SETTINGS_PATH.parent)
+    )
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(settings, f, indent=2)
+        os.replace(tmp_path, SETTINGS_PATH)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
     print(f"Settings saved to {SETTINGS_PATH}")
 
 

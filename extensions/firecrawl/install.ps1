@@ -76,7 +76,14 @@ $settingsContent.mcpServers | Add-Member -NotePropertyName 'firecrawl-mcp' -Note
     args = @('-y', 'firecrawl-mcp@3.11.0')
     env = @{ FIRECRAWL_API_KEY = $apiKeyPlain }
 } -Force
-$settingsContent | ConvertTo-Json -Depth 10 | Set-Content $McpConfigFile -Encoding UTF8
+# Write atomically: stage to a temp file in the same directory, then swap
+# it into place, so a crash mid-write never leaves ~/.claude.json truncated
+# or half-written (it is shared with Claude Code and other installers).
+# -Depth 100 (not the ConvertTo-Json default of 2, or the previous 10) so an
+# existing ~/.claude.json with deeply nested config round-trips intact.
+$TempConfigFile = Join-Path (Split-Path -Parent $McpConfigFile) ".claude.json.$([guid]::NewGuid().ToString('N')).tmp"
+$settingsContent | ConvertTo-Json -Depth 100 | Set-Content $TempConfigFile -Encoding UTF8
+Move-Item -Path $TempConfigFile -Destination $McpConfigFile -Force
 # Restrict the credential-bearing settings file to the current user only.
 try {
     icacls $McpConfigFile /inheritance:r /grant:r "${env:USERNAME}:F" | Out-Null
