@@ -123,11 +123,17 @@ def test_installers_reference_the_scripts_launcher() -> None:
 )
 def test_launcher_runs_without_network_or_managed_runtime() -> None:
     """``doctor --help`` is handled by argparse before any venv is touched."""
+    # Python 3.14 argparse colourises help whenever colour is forced in the
+    # environment; disable it and strip any escapes so the assertion is stable.
+    env = {**os.environ, "PYTHON_COLORS": "0", "NO_COLOR": "1"}
+    env.pop("FORCE_COLOR", None)
     result = subprocess.run(
         ["bash", str(LAUNCHER), "doctor", "--help"],
         capture_output=True,
         text=True,
         cwd=str(ROOT),
+        env=env,
     )
     assert result.returncode == 0, result.stderr
-    assert "usage: claude-seo doctor" in result.stdout
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+    assert "usage: claude-seo doctor" in plain
