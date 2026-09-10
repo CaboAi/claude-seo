@@ -43,17 +43,32 @@ As of 2025-2026, AI companies actively crawl the web to train models and power A
 
 | Crawler | Company | robots.txt token | Purpose |
 |---------|---------|-----------------|---------|
-| GPTBot | OpenAI | `GPTBot` | Model training |
-| ChatGPT-User | OpenAI | `ChatGPT-User` | Real-time browsing |
-| ClaudeBot | Anthropic | `ClaudeBot` | Model training |
+| GPTBot | OpenAI | `GPTBot` | Model training (NOT ChatGPT Search) |
+| OAI-SearchBot | OpenAI | `OAI-SearchBot` | ChatGPT Search citability |
+| ChatGPT-User | OpenAI | `ChatGPT-User` | Real-time browsing (user-triggered) |
+| ClaudeBot | Anthropic | `ClaudeBot` | Model training (NOT Claude search citability) |
+| Claude-SearchBot | Anthropic | `Claude-SearchBot` | Claude search-result citability |
 | PerplexityBot | Perplexity | `PerplexityBot` | Search index + training |
 | Bytespider | ByteDance | `Bytespider` | Model training |
 | Google-Extended | Google | `Google-Extended` | Gemini training (NOT search) |
+| Applebot-Extended | Apple | `Applebot-Extended` | Apple Intelligence training opt-out (NOT Siri/Spotlight/Safari) |
 | CCBot | Common Crawl | `CCBot` | Open dataset |
 
 **Key distinctions:**
 - Blocking `Google-Extended` prevents Gemini training use but does NOT affect Google Search indexing or AI Overviews (those use `Googlebot`)
-- Blocking `GPTBot` prevents OpenAI training but does NOT prevent ChatGPT from citing your content via browsing (`ChatGPT-User`)
+- Blocking `GPTBot` prevents OpenAI training but does NOT affect ChatGPT Search
+  citability, which is governed by `OAI-SearchBot`, nor user-triggered browsing
+  (`ChatGPT-User`). Check `OAI-SearchBot` for any citability claim; `GPTBot`
+  status is evidence about training use only
+- Blocking `ClaudeBot` prevents Anthropic model training but does NOT affect
+  citability in Claude's own search features, which is governed by
+  `Claude-SearchBot` (per Anthropic's crawler support article). Check
+  `Claude-SearchBot` for any Claude-search citability claim; `ClaudeBot` status
+  is evidence about training use only
+- Blocking `Applebot-Extended` opts out of Apple Intelligence / generative-model
+  training use but does NOT affect discoverability via Siri, Spotlight, or Safari,
+  which follows `Applebot` (per Apple's support article); `Applebot-Extended` does
+  not itself crawl
 - ~3-5% of websites now use AI-specific robots.txt rules
 
 **Example, selective AI crawler blocking:**

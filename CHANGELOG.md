@@ -11,6 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `content_humanize.py` now strips invisible Unicode watermark characters (zero-width
+  codepoints, directional marks/overrides, tag characters) and normalizes exotic spaces
+  before the AI-phrasing pass, which those codepoints otherwise defeat by breaking `\b`
+  word boundaries. Emoji sequences (ZWJ, variation selectors) are preserved. The
+  `seo-content` skill documents the new triggers and the scope limits (statistical
+  watermarks are untouched; intended for the user's own drafts).
+- Templated-metadata detector (`scripts/metadata_template.py`): flags meta descriptions that
+  restate their own title tag verbatim and then close with a stock call to action, the shape bulk
+  metadata jobs produce site-wide. Deterministic string comparison, no model, `method: heuristic`
+  in its output. Exposes a site-level roll-up (`templated_ratio`, `shared_cta_phrases`, `site_risk`)
+  because duplicated/templated metadata is a site-scale signal, not a per-page one. Wired into
+  `seo-page`, the `seo-content` agent, the quality-gates meta description table, and the
+  `seo-programmatic` uniqueness gate, which measures body copy only and therefore cannot see this.
+
 ### Changed
 
 - Google Search guidance refreshed through 2026-09-10 from Google-owned sources:
@@ -68,6 +84,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   turn-budget stop never throws away completed work; `seo-audit`'s
   error-handling table documents the same contract for the orchestrator.
   Fixes #177, #272.
+- AI crawler claims are now checked against the crawler that actually governs them.
+  `GPTBot` was documented as "ChatGPT web search" in the `seo-geo` crawler table; it is
+  OpenAI's model-training crawler, while `OAI-SearchBot` is what determines ChatGPT
+  Search citability. `Google-Extended` governs Gemini/Vertex training and grounding only
+  and is no longer treated as a Google Search readiness signal (Google Search, AI
+  Overviews, and AI Mode all follow `Googlebot`). The same GPTBot-shaped conflation was
+  found for Claude: `ClaudeBot` (Anthropic's training crawler) was listed as a
+  search-visibility crawler in `seo-geo`'s table, agent, and recommendation line, while
+  `Claude-SearchBot` (the crawler that actually governs Claude search citability) was
+  missing entirely. `seo-technical` already had `ClaudeBot` correctly labelled
+  training-only, so `seo-geo` and the `seo-geo` agent were brought into agreement with
+  it rather than the other way around. Adds `Claude-SearchBot` and `Applebot-Extended`
+  (Apple's training-opt-out token, distinct from `Applebot` search indexing) to both
+  skills, a claim-to-bot mapping table for all four vendors, citations to each vendor's
+  own crawler documentation (OpenAI, Google, Anthropic, Apple), the missing
+  `OAI-SearchBot` row to the `seo-technical` crawler table, and requires training access
+  and search citability to be reported as separate findings. The `anthropic-ai` row is
+  marked unverified: it does not appear on Anthropic's current crawler support article.
 
 
 ## [2.2.6] - 2026-09-10
