@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   because duplicated/templated metadata is a site-scale signal, not a per-page one. Wired into
   `seo-page`, the `seo-content` agent, the quality-gates meta description table, and the
   `seo-programmatic` uniqueness gate, which measures body copy only and therefore cannot see this.
+- `fetch_page.py --json` exposes full response metadata and content for raw and
+  rendered fetches, including structured fetch errors (#282).
+- `fetch_page.py --json --max-text N` truncates content fields, matching
+  `render_page.py`'s option.
 
 ### Changed
 
@@ -102,6 +106,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `OAI-SearchBot` row to the `seo-technical` crawler table, and requires training access
   and search citability to be reported as separate findings. The `anthropic-ai` row is
   marked unverified: it does not appear on Anthropic's current crawler support article.
+- `fetch_page.py --json` emitted a different key set for the raw path than the
+  rendered path (raw dumped `fetch_page()`'s own dict as-is; rendered dumped
+  `render_page()`'s dict as-is). Both paths now go through
+  `render_page._json_summary` after the raw result is mapped onto the
+  render_page contract, so `--json` output has one shared shape and `--max-text`
+  applies to both (#297).
+- `install.ps1` crashed on Windows PowerShell 5.1 before it could even check
+  whether Python was installed: `Test-PythonCandidate`'s `-Args` parameter was
+  a mandatory `[string[]]`, which 5.1 rejects when called with an empty array,
+  and `Resolve-Python` calls it that way for the `python3`/`python` candidates
+  (#207).
+- The Windows installer smoke workflow only ran the install/verify/uninstall
+  sequence under PowerShell Core (`pwsh`); a parallel job now runs the same
+  steps under Windows PowerShell 5.1 (`shell: powershell`), which is what
+  actually caught #207.
+- The dataforseo, firecrawl, ahrefs, and banana extension installers wrote
+  their MCP server block to `~/.claude/settings.json`, a key Claude Code does
+  not read from that file, so the server never loaded and reinstalling could
+  not fix it. They now write `~/.claude.json` (the file `claude mcp add`
+  writes) across install/uninstall scripts, banana's Python helpers, and the
+  setup docs. `bing-webmaster`, `profound`, and `seranking` were left alone:
+  they write the `env` key, which settings.json does support (#204).
+- `extensions/firecrawl/install.ps1` and `extensions/banana/scripts/
+  setup_mcp.py` now write `~/.claude.json` atomically (temp file in the same
+  directory, then `Move-Item -Force` / `os.replace`), and the PowerShell
+  serialisation depth is raised from 10 to 100 so an existing `~/.claude.json`
+  with deeply nested config round-trips intact instead of being flattened.
+- `scripts/backlinks_auth.py`'s token file hardening was a no-op on Windows:
+  it had no write path at all, and its permission story on POSIX (none) did
+  not match `google_auth.py`'s OAuth token handling. It now shares
+  `google_auth._chmod_quiet`, gains a `save_config()` that mirrors
+  `google_auth.py`'s `os.open`/`os.fchmod` 0o600 write pattern, and both
+  `save_config()` and `load_config()` make a best-effort `icacls` call on
+  Windows to restrict `~/.config/claude-seo/backlinks-api.json` to the
+  current user, since POSIX mode bits do not restrict NTFS ACLs (#290).
+- 17 scripts raise `sys.exit(1)` at import time when an optional dependency
+  (`requests`, `bs4`, `playwright`, `googleapiclient`, `google.analytics`) is
+  missing. Any test module that imports one of these at module scope aborted
+  the whole pytest session on a minimal install instead of skipping. 8 of the
+  17 (`bing_webmaster`, `commoncrawl_graph`, `crux_history`, `fetch_page`,
+  `moz_api`, `nlp_analyze`, `pagespeed_check`, `parse_html`) had test modules
+  that needed the guard (`gsc_query`'s 3 test modules already had it; the
+  other 8 of the 17 have no test module that imports them at module scope,
+  so nothing to guard). `url_safety.py` itself hard-requires `requests`
+  (by design), so every script that imports it transitively hits the same
+  failure; guarded those test modules too (`domain_history`,
+  `gbp_deprecation_lint`, `parasite_risk`, `agent_ux_check`/`render_page`,
+  `indexnow_submit`, `url_safety`'s own suite, and the new
+  `backlinks_auth` hardening tests). 17 test modules gained a
+  `pytest.importorskip` guard in total. Verified in a throwaway venv with
+  only `pytest` and `beautifulsoup4` installed: the suite completes (206
+  passed, 24 skipped, no errors).
 
 
 ## [2.2.6] - 2026-09-10
