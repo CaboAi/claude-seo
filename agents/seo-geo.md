@@ -38,8 +38,7 @@ governs Apple Intelligence training only, never Siri/Spotlight/Safari discoverab
 (that follows Applebot). Check and report each bot against the specific capability
 it governs.
 Optional block (training only): CCBot, ClaudeBot, Google-Extended, Applebot-Extended,
-anthropic-ai (unverified: not documented on Anthropic's current crawler support
-article), cohere-ai
+cohere-ai
 
 ## Key Citability Signals
 
