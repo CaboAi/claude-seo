@@ -155,10 +155,12 @@ Check `robots.txt` for these AI crawlers:
 | GPTBot | OpenAI | **Model training only** (NOT ChatGPT Search) | yes |
 | OAI-SearchBot | OpenAI | **ChatGPT Search citability** (the crawler that decides it) | yes |
 | ChatGPT-User | OpenAI | ChatGPT browsing (user-triggered) | no (user-triggered) |
-| ClaudeBot | Anthropic | Claude web features | yes |
+| ClaudeBot | Anthropic | **Model training only** (NOT Claude's search features) | yes |
+| Claude-SearchBot | Anthropic | **Claude/Claude.ai search-result citability** (the crawler that decides it) | yes |
+| Claude-User | Anthropic | Claude browsing on a user's behalf (user-triggered) | no (user-triggered) |
 | PerplexityBot | Perplexity | Perplexity AI search | yes |
 | CCBot | Common Crawl | Training data (often blocked) | yes |
-| anthropic-ai | Anthropic | Claude training | yes |
+| anthropic-ai | Anthropic | Legacy training token; unverified whether still active alongside ClaudeBot | unverified |
 | Bytespider | ByteDance | TikTok/Douyin AI | yes |
 | cohere-ai | Cohere | Cohere models | yes |
 | Google-Extended | Google | **Gemini/Vertex training & grounding only** (NOT Google Search) | yes |
@@ -166,10 +168,21 @@ Check `robots.txt` for these AI crawlers:
 | Google-Agent | Google | Agentic browsing (Project Mariner), acts for a user | **no (user-triggered)** |
 | Google-NotebookLM | Google | Fetches individual user-added source URLs | **no (user-triggered)** |
 | Google Messages | Google | User-triggered fetch | **no (user-triggered)** |
+| Applebot-Extended | Apple | **Apple Intelligence / generative-AI training data opt-out only** (NOT Siri, Spotlight, or Safari search; does not itself crawl, it labels content already fetched by Applebot) | yes |
 
-**Recommendation:** Allow OAI-SearchBot, ClaudeBot, and PerplexityBot for AI search
-visibility. GPTBot and CCBot are training crawlers -- allow or block them on licensing
-preference, not on search-visibility grounds.
+Sources: [OpenAI crawlers](https://platform.openai.com/docs/bots),
+[Google crawlers overview](https://developers.google.com/search/docs/crawling-indexing/overview-google-crawlers),
+[Anthropic crawler support article](https://support.anthropic.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler),
+[Apple Applebot-Extended support article](https://support.apple.com/en-us/119829).
+The `anthropic-ai` row is **unverified**: it does not appear on Anthropic's current
+crawler support article (which documents only ClaudeBot, Claude-User, and
+Claude-SearchBot), so treat it as a legacy or third-party-reported token rather than
+a confirmed current one.
+
+**Recommendation:** Allow OAI-SearchBot, Claude-SearchBot, and PerplexityBot for AI
+search visibility. GPTBot, ClaudeBot, CCBot, and Applebot-Extended are training-only
+signals -- allow or block them on licensing preference, not on search-visibility
+grounds.
 
 ### Check the right bot for the claim you are making
 
@@ -182,6 +195,10 @@ bot's robots.txt status** -- check them separately and report them separately.
 | "Content is available for OpenAI model training" | `GPTBot` | `OAI-SearchBot` |
 | "Content can be used for Gemini/Vertex training & grounding" | `Google-Extended` | `Googlebot` |
 | "Content is eligible for Google Search / AI Overviews" | `Googlebot` | `Google-Extended` |
+| "Content is citable in Claude's search features" | `Claude-SearchBot` | `ClaudeBot` |
+| "Content is available for Anthropic model training" | `ClaudeBot` | `Claude-SearchBot` |
+| "Content can be used for Apple Intelligence training" | `Applebot-Extended` | `Applebot` |
+| "Content is discoverable via Siri, Spotlight, or Safari search" | `Applebot` | `Applebot-Extended` |
 
 - **`Google-Extended` governs Gemini and Vertex AI training and grounding use only.
   It does not affect inclusion in ordinary Google Search, or in AI Overviews and AI
@@ -192,6 +209,16 @@ bot's robots.txt status** -- check them separately and report them separately.
   `GPTBot` is OpenAI's separate training crawler.** Checking `GPTBot` access tells
   you nothing about whether ChatGPT Search can cite the page. A site that blocks
   `GPTBot` and allows `OAI-SearchBot` is fully citable in ChatGPT Search.
+- **`Claude-SearchBot` is the crawler that determines citability in Claude's own
+  search features. `ClaudeBot` is Anthropic's separate training crawler** (per
+  Anthropic's crawler support article). Checking `ClaudeBot` access tells you
+  nothing about Claude search citability, and vice versa; report each separately.
+- **`Applebot-Extended` is a training-data opt-out signal, not a crawler that
+  fetches pages itself.** Per Apple's support article, disallowing
+  `Applebot-Extended` opts a site out of Apple Intelligence / generative-model
+  training use, but the page remains discoverable through Siri, Spotlight, and
+  Safari as long as `Applebot` itself is allowed. Never cite a blocked
+  `Applebot-Extended` as evidence a site is missing from Apple's search surfaces.
 
 Do not use these names interchangeably in report prose. When reporting crawler access,
 name the specific user-agent that was checked and the specific capability it governs.
@@ -297,9 +324,10 @@ Generate `GEO-ANALYSIS.md` with:
 1. **GEO Readiness Score: XX/100**
 2. **Platform breakdown** (Google AIO, ChatGPT, Perplexity scores)
 3. **AI Crawler Access Status** -- report each crawler separately with the
-   capability it governs. Training access (`GPTBot`, `Google-Extended`, `CCBot`)
-   and search citability (`OAI-SearchBot`, `Googlebot`, `PerplexityBot`,
-   `ClaudeBot`) are distinct findings and must never be merged into one line.
+   capability it governs. Training access (`GPTBot`, `Google-Extended`, `CCBot`,
+   `ClaudeBot`, `Applebot-Extended`) and search citability (`OAI-SearchBot`,
+   `Googlebot`, `PerplexityBot`, `Claude-SearchBot`, `Applebot`) are distinct
+   findings and must never be merged into one line.
 4. **llms.txt Status** (present, missing, recommendations)
 5. **Brand Mention Analysis** (presence on Wikipedia, Reddit, YouTube, LinkedIn)
 6. **Passage-Level Citability** (optimal 134-167 word blocks identified)

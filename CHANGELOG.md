@@ -14,12 +14,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   OpenAI's model-training crawler, while `OAI-SearchBot` is what determines ChatGPT
   Search citability. `Google-Extended` governs Gemini/Vertex training and grounding only
   and is no longer treated as a Google Search readiness signal (Google Search, AI
-  Overviews, and AI Mode all follow `Googlebot`). Adds a claim-to-bot mapping table (cited
-  to OpenAI's and Google's own crawler docs), rows for `Claude-SearchBot` and
-  `Applebot-Extended`, the missing `OAI-SearchBot` row to the `seo-technical` crawler
-  table, fixes a stale `seo-technical` line that still described `ClaudeBot` as
-  training-only, and requires training access and search citability to be reported as
-  separate findings.
+  Overviews, and AI Mode all follow `Googlebot`). The same GPTBot-shaped conflation was
+  found for Claude: `ClaudeBot` (Anthropic's training crawler) was listed as a
+  search-visibility crawler in `seo-geo`'s table, agent, and recommendation line, while
+  `Claude-SearchBot` (the crawler that actually governs Claude search citability) was
+  missing entirely. `seo-technical` already had `ClaudeBot` correctly labelled
+  training-only, so `seo-geo` and the `seo-geo` agent were brought into agreement with
+  it rather than the other way around. Adds `Claude-SearchBot` and `Applebot-Extended`
+  (Apple's training-opt-out token, distinct from `Applebot` search indexing) to both
+  skills, a claim-to-bot mapping table for all four vendors, citations to each vendor's
+  own crawler documentation (OpenAI, Google, Anthropic, Apple), the missing
+  `OAI-SearchBot` row to the `seo-technical` crawler table, and requires training access
+  and search citability to be reported as separate findings. The `anthropic-ai` row is
+  marked unverified: it does not appear on Anthropic's current crawler support article.
 
 ### Added
 
