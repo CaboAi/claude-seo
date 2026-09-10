@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `fetch_page.py --json` exposes full response metadata and content for raw and
   rendered fetches, including structured fetch errors (#282).
+- `fetch_page.py --json --max-text N` truncates content fields, matching
+  `render_page.py`'s option.
+
+### Fixed
+
+- `fetch_page.py --json` emitted a different key set for the raw path than the
+  rendered path (raw dumped `fetch_page()`'s own dict as-is; rendered dumped
+  `render_page()`'s dict as-is). Both paths now go through
+  `render_page._json_summary` after the raw result is mapped onto the
+  render_page contract, so `--json` output has one shared shape and `--max-text`
+  applies to both (#297).
 
 ## [2.2.6] - 2026-09-10
 

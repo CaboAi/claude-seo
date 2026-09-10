@@ -197,15 +197,67 @@ def fetch_page(
     return result
 
 
-def _emit_json(result: dict, output: Optional[str]) -> None:
-    """Emit a fetch result, optionally saving successful HTML separately."""
+def _non_negative_int(value: str) -> int:
+    parsed = int(value)
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("must be zero or greater")
+    return parsed
+
+
+def _as_render_result(result: dict, *, mode_used: str) -> dict:
+    """Map a raw ``fetch_page()`` result onto the ``render_page()`` contract.
+
+    ``render_page._json_summary`` is written against the render_page result
+    shape. Normalizing the raw-fetch result onto that same shape before
+    calling it (rather than dumping the raw dict as-is) means ``--json``
+    emits an identical key set whether or not ``--render`` was used, and the
+    raw path gets ``--max-text`` truncation for free.
+    """
+    redirect_chain = result.get("redirect_details")
+    if not redirect_chain:
+        redirect_chain = [
+            {"url": u, "status_code": None} for u in result.get("redirect_chain") or []
+        ]
+    return {
+        "url": result.get("url"),
+        "status_code": result.get("status_code"),
+        "content": result.get("content"),
+        "raw_content": result.get("content"),
+        "is_spa": None,
+        "extracted_text": None,
+        "publication_date": None,
+        "accessibility_tree": None,
+        "accessibility_error": None,
+        "accessibility_partial": False,
+        "headers": result.get("headers", {}),
+        "redirect_chain": redirect_chain,
+        "console_errors": [],
+        "render_diagnostics": [],
+        "render_engine": None,
+        "render_ms": None,
+        "mode_used": mode_used,
+        "error": result.get("error"),
+    }
+
+
+def _emit_json(result: dict, output: Optional[str], *, max_text: int = 0) -> None:
+    """Emit a fetch result as JSON via ``render_page._json_summary``.
+
+    Both the raw and rendered fetch paths are normalized onto the render_page
+    result contract before this is called, so the emitted JSON has an
+    identical key set (and honours ``--max-text``) regardless of ``--render``.
+    """
+    from render_page import _json_summary
+
     output_written = False
-    if output and not result["error"]:
+    if output and not result.get("error"):
         with open(output, "w", encoding="utf-8") as f:
-            f.write(result["content"] or "")
+            f.write(result.get("content") or "")
         output_written = True
-    print(json.dumps({**result, "output_written": output_written}, indent=2))
-    sys.exit(1 if result["error"] else 0)
+    summary = _json_summary(result, max_text=max_text)
+    summary["output_written"] = output_written
+    print(json.dumps(summary, indent=2, default=str))
+    sys.exit(1 if result.get("error") else 0)
 
 
 def main():
@@ -213,6 +265,16 @@ def main():
     parser.add_argument("url", help="URL to fetch")
     parser.add_argument("--output", "-o", help="Output file path")
     parser.add_argument("--json", action="store_true", help="Emit full fetch result as JSON")
+    parser.add_argument(
+        "--max-text",
+        type=_non_negative_int,
+        default=0,
+        help=(
+            "maximum characters returned for each JSON content field "
+            "(content, raw_content, extracted_text); 0 keeps full text "
+            "(default: 0). Only applies with --json."
+        ),
+    )
     parser.add_argument("--timeout", "-t", type=int, default=30, help="Timeout in seconds")
     parser.add_argument("--no-redirects", action="store_true", help="Don't follow redirects")
     parser.add_argument("--user-agent", help="Custom User-Agent string")
@@ -252,7 +314,7 @@ def main():
             user_agent=ua,
         )
         if args.json:
-            _emit_json(rendered, args.output)
+            _emit_json(rendered, args.output, max_text=args.max_text)
         if rendered["error"]:
             print(f"Error: {rendered['error']}", file=sys.stderr)
             sys.exit(1)
@@ -278,7 +340,11 @@ def main():
     )
 
     if args.json:
-        _emit_json(result, args.output)
+        _emit_json(
+            _as_render_result(result, mode_used="raw"),
+            args.output,
+            max_text=args.max_text,
+        )
 
     if result["error"]:
         print(f"Error: {result['error']}", file=sys.stderr)
