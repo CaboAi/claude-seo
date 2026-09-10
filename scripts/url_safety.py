@@ -99,6 +99,8 @@ __all__ = [
     "safe_requests_head",
     "safe_requests_session",
     "make_safe_playwright_route_handler",
+    "DEFAULT_USER_AGENT",
+    "DEFAULT_REQUEST_HEADERS",
 ]
 
 
@@ -553,23 +555,33 @@ def _pin_dns(
         _dns_patch_lock.release()
 
 
-# Default request headers, mirroring the browser-like defaults fetch_page.py
-# has used since v1.2.1 (issue #9). Without them ``requests`` announces itself
-# as ``User-Agent: python-requests/x.y.z`` with no Accept-Language, which many
-# managed WAFs and CDNs answer with 403/406, and which SSR frameworks answer
-# with the empty client-side shell. Callers do not see an exception in that
-# case, they analyse the error page or the shell as if it were the real
-# document. Any header here can be overridden by passing ``headers=``.
+# The browser-like default User-Agent for every raw-HTTP fetch in claude-seo.
+# ``fetch_page.py`` has carried these defaults since v1.2.1 (issue #9); they
+# live here now because ``url_safety`` is the lower layer, so this module is
+# the one place to change them. ``fetch_page.py`` imports them back.
+DEFAULT_USER_AGENT = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/150.0.7871.114 Safari/537.36 ClaudeSEO/2.0"
+)
+
+# Without these, ``requests`` announces itself as
+# ``User-Agent: python-requests/x.y.z``, which many managed WAFs and CDNs
+# answer with 403/406 and SSR frameworks answer with the empty client-side
+# shell. Callers do not see an exception in that case, they analyse the error
+# page or the shell as if it were the real document.
+#
+# Accept-Language is deliberately absent. Announcing ``en-US`` makes a
+# multi-locale site serve its English variant, which silently corrupts every
+# hreflang, international, and localized-content audit. A caller that wants a
+# specific locale passes it in ``headers=``; anything else lets the site
+# choose, which is what an auditor wants to observe.
+#
+# Any header here can be overridden by passing ``headers=``.
 DEFAULT_REQUEST_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/150.0.7871.115 Safari/537.36 ClaudeSEO/2.0"
-    ),
-    "Accept": (
-        "text/html,application/xhtml+xml,application/xml;q=0.9,"
-        "image/avif,image/webp,*/*;q=0.8"
-    ),
-    "Accept-Language": "en-US,en;q=0.9",
+    "User-Agent": DEFAULT_USER_AGENT,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Encoding": "gzip, deflate",
+    "Connection": "keep-alive",
 }
 
 

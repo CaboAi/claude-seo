@@ -30,12 +30,18 @@ except ImportError:
 _SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
 if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
-from url_safety import URLSafetyError, safe_requests_session, validate_url_strict  # noqa: E402
-
-DEFAULT_USER_AGENT = (
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/150.0.7871.114 Safari/537.36 ClaudeSEO/2.0"
+from url_safety import (  # noqa: E402
+    DEFAULT_REQUEST_HEADERS,
+    URLSafetyError,
+    safe_requests_session,
+    validate_url_strict,
 )
+from url_safety import DEFAULT_USER_AGENT as DEFAULT_USER_AGENT  # noqa: E402,F401
+
+# DEFAULT_USER_AGENT and the header block now live in url_safety, the lower
+# layer that both this script and the safe_requests_* helpers go through, so
+# there is one place to change them. The name is re-exported above because
+# fetch_page.DEFAULT_USER_AGENT was the public spelling before v2.3.0.
 
 # Googlebot UA for prerender/dynamic rendering detection.
 # Prerender services (Prerender.io, Rendertron) serve fully rendered HTML to
@@ -46,13 +52,10 @@ GOOGLEBOT_USER_AGENT = (
     "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
 )
 
-DEFAULT_HEADERS = {
-    "User-Agent": DEFAULT_USER_AGENT,
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.5",
-    "Accept-Encoding": "gzip, deflate",
-    "Connection": "keep-alive",
-}
+# One source of truth with the safe_requests_* helpers. Accept-Language is
+# absent by design: announcing en-US makes multi-locale sites serve their
+# English variant, which corrupts hreflang and international audits.
+DEFAULT_HEADERS = dict(DEFAULT_REQUEST_HEADERS)
 
 _CONTENT_TYPE_CHARSET_RE = re.compile(r"charset\s*=\s*['\"]?([^;,'\"\s>]+)", re.IGNORECASE)
 _META_CHARSET_RE = re.compile(

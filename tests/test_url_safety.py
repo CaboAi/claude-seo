@@ -360,7 +360,27 @@ def test_default_headers_are_browser_like() -> None:
     headers = url_safety.DEFAULT_REQUEST_HEADERS
     assert "python-requests" not in headers["User-Agent"]
     assert headers["User-Agent"].startswith("Mozilla/5.0")
-    assert "Accept-Language" in headers
+    assert "Accept" in headers
+
+
+def test_default_headers_are_the_same_object_fetch_page_uses() -> None:
+    """One source of truth: fetch_page.py's raw-HTTP defaults are url_safety's,
+    so the two fetch paths cannot drift into announcing different clients."""
+    import fetch_page  # noqa: WPS433
+
+    assert fetch_page.DEFAULT_HEADERS == url_safety.DEFAULT_REQUEST_HEADERS
+    assert fetch_page.DEFAULT_USER_AGENT == url_safety.DEFAULT_USER_AGENT
+    assert (
+        url_safety.DEFAULT_REQUEST_HEADERS["User-Agent"]
+        == url_safety.DEFAULT_USER_AGENT
+    )
+
+
+def test_default_headers_do_not_announce_a_language() -> None:
+    """Announcing en-US makes a multi-locale site serve its English variant,
+    which silently corrupts every hreflang and international audit."""
+    assert "Accept-Language" not in url_safety.DEFAULT_REQUEST_HEADERS
+    assert "Accept-Language" not in url_safety._with_default_headers({})["headers"]
 
 
 def test_with_default_headers_fills_unset_headers() -> None:
@@ -379,9 +399,42 @@ def test_with_default_headers_lets_caller_override() -> None:
     )["headers"]
     assert merged["User-Agent"] == "Googlebot/2.1"
     # Headers the caller did not set are still filled in.
-    assert merged["Accept-Language"] == (
-        url_safety.DEFAULT_REQUEST_HEADERS["Accept-Language"]
-    )
+    assert merged["Accept"] == url_safety.DEFAULT_REQUEST_HEADERS["Accept"]
+
+
+def _capture_safe_get_headers(**kwargs) -> dict:
+    """Run safe_requests_get with validation and pinning stubbed out, and
+    return the headers mapping that reached requests.get."""
+    @contextmanager
+    def fake_pin(hostname: str, pinned_ip: str, port: int, exempt_hosts=frozenset()):
+        yield
+
+    with patch.object(
+        url_safety,
+        "validate_url_strict",
+        return_value=("https://safe.example/", "1.1.1.1"),
+    ), patch.object(
+        url_safety, "_pin_dns", side_effect=fake_pin
+    ), patch.object(
+        url_safety, "_validated_proxy_hosts", return_value=frozenset()
+    ), patch.object(
+        url_safety.requests, "get", return_value=SimpleNamespace(status_code=200)
+    ) as request_get:
+        url_safety.safe_requests_get("https://safe.example/", **kwargs)
+    return request_get.call_args.kwargs["headers"]
+
+
+def test_safe_requests_get_sends_no_accept_language_by_default() -> None:
+    headers = _capture_safe_get_headers()
+    assert "Accept-Language" not in headers
+    assert headers["User-Agent"] == url_safety.DEFAULT_USER_AGENT
+
+
+def test_safe_requests_get_preserves_a_caller_supplied_accept_language() -> None:
+    headers = _capture_safe_get_headers(headers={"Accept-Language": "de-DE,de;q=0.9"})
+    assert headers["Accept-Language"] == "de-DE,de;q=0.9"
+    # The rest of the defaults are still filled in.
+    assert headers["Accept"] == url_safety.DEFAULT_REQUEST_HEADERS["Accept"]
 
 
 def test_with_default_headers_preserves_other_kwargs_and_constant() -> None:
