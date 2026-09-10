@@ -17,11 +17,14 @@ import sys
 from pathlib import Path
 from unittest import mock
 
+import pytest
+
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _SCRIPTS = _REPO_ROOT / "scripts"
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
+pytest.importorskip("requests")
 import agent_ux_check  # noqa: E402
 import iptc_ai_label  # noqa: E402
 import render_page  # noqa: E402

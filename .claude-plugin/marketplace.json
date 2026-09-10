@@ -5,13 +5,13 @@
     "name": "AgriciDaniel"
   },
   "metadata": {
-    "description": "Comprehensive SEO analysis plugin for Claude Code. 25 sub-skills and 18 sub-agents, plus 8 optional MCP extensions (DataForSEO, Firecrawl, Banana, Ahrefs, SE Ranking, Profound, Bing Webmaster, Unlighthouse). v2.2.5 hardens installation, schema validation, rendered-page and accessibility analysis, runtime portability, and current Google Search guidance."
+    "description": "Comprehensive SEO analysis plugin for Claude Code. 25 sub-skills and 18 sub-agents, plus 8 optional MCP extensions (DataForSEO, Firecrawl, Banana, Ahrefs, SE Ranking, Profound, Bing Webmaster, Unlighthouse). v2.3.0 adds a local-target allowlist and proxy validation to the SSRF guard, refreshes Google guidance through September 2026, hardens the JSON-LD hook, fixes AI crawler guidance, and raises audit agent turn budgets."
   },
   "plugins": [
     {
       "name": "claude-seo",
       "source": "./",
-      "description": "Comprehensive SEO analysis plugin for Claude Code. 25 sub-skills and 18 sub-agents, plus 8 optional MCP extensions. v2.2.5 hardens installation, schema validation, rendered-page and accessibility analysis, runtime portability, and current Google Search guidance.",
+      "description": "Comprehensive SEO analysis plugin for Claude Code. 25 sub-skills and 18 sub-agents, plus 8 optional MCP extensions. v2.3.0 adds a local-target allowlist and proxy validation to the SSRF guard, refreshes Google guidance through September 2026, hardens the JSON-LD hook, fixes AI crawler guidance, and raises audit agent turn budgets.",
       "author": {
         "name": "AgriciDaniel",
         "url": "https://github.com/AgriciDaniel"
