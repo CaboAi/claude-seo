@@ -20,7 +20,6 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-import requests
 
 _SCRIPTS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts")
 if _SCRIPTS not in sys.path:
@@ -658,6 +657,9 @@ def test_proxy_hosts_is_empty_without_a_proxy(monkeypatch) -> None:
 
 
 def test_pin_dns_lets_the_exempt_proxy_host_resolve_to_loopback() -> None:
+    """The primitive honours whatever exempt set it is handed. Callers reach it
+    through _validated_proxy_hosts, which refuses a loopback proxy before it can
+    ever land in that set; this test pins the low-level contract only."""
     original_getaddrinfo = socket.getaddrinfo
 
     def fake_getaddrinfo(host, port, *args, **kwargs):
@@ -693,28 +695,129 @@ def test_pin_dns_exemption_does_not_leak_to_other_hosts() -> None:
                 socket.getaddrinfo("redirected.example", 80)
 
 
-def test_safe_requests_get_reaches_a_loopback_proxy(monkeypatch) -> None:
-    """End to end, offline: with HTTPS_PROXY on loopback the request must get
-    as far as the proxy socket. A closed port turns that into a plain
-    connection refusal, whereas before the fix url_safety refused to resolve
-    the proxy at all."""
-    probe = socket.socket()
-    probe.bind(("127.0.0.1", 0))
-    closed_port = probe.getsockname()[1]
-    probe.close()
-    _system_proxies(monkeypatch, {"https": f"http://127.0.0.1:{closed_port}"})
-    monkeypatch.delenv("NO_PROXY", raising=False)
+def _fake_resolver(mapping: dict):
+    """getaddrinfo stand-in resolving only the named hosts, refusing the rest.
 
-    original_getaddrinfo = socket.getaddrinfo
-
+    Refusing everything else keeps these tests from touching the developer's
+    real resolver, which would make them slow and network-dependent.
+    """
     def fake_getaddrinfo(host, port, *args, **kwargs):
-        if host == "example.com":
-            return _addrinfo("93.184.216.34", port or 443)
-        if host == "127.0.0.1":
-            return _addrinfo("127.0.0.1", port or closed_port)
-        return original_getaddrinfo(host, port, *args, **kwargs)
+        if host in mapping:
+            return _addrinfo(mapping[host], port or 0)
+        raise socket.gaierror(socket.EAI_NONAME, f"unmocked host {host!r}")
 
-    with patch.object(url_safety.socket, "getaddrinfo", side_effect=fake_getaddrinfo):
-        with pytest.raises(requests.exceptions.ProxyError) as excinfo:
+    return fake_getaddrinfo
+
+
+def test_assert_proxy_host_is_public_accepts_a_public_proxy() -> None:
+    resolver = _fake_resolver({"proxy.corp.example": "8.8.4.4"})
+    with patch.object(url_safety.socket, "getaddrinfo", side_effect=resolver):
+        assert (
+            url_safety._assert_proxy_host_is_public("Proxy.Corp.Example")
+            == "proxy.corp.example"
+        )
+
+
+@pytest.mark.parametrize(
+    "proxy_host",
+    [
+        "127.0.0.1",          # loopback
+        "10.0.0.5",           # RFC 1918
+        "192.168.1.10",       # RFC 1918
+        "169.254.169.254",    # cloud metadata / link-local
+        "100.100.100.200",    # RFC 6598, Alibaba metadata
+        "metadata.google.internal",
+        "localhost",
+    ],
+)
+def test_assert_proxy_host_is_public_refuses_non_public_proxies(proxy_host) -> None:
+    """A proxy is exempt from the pinned scope, so it gets the same policy as
+    an audit target. Anything the environment can point at the local network
+    or a metadata endpoint must be refused, not exempted."""
+    with pytest.raises(url_safety.URLSafetyError, match="Refusing configured HTTP proxy"):
+        url_safety._assert_proxy_host_is_public(proxy_host)
+
+
+def test_assert_proxy_host_is_public_refuses_a_proxy_that_resolves_private() -> None:
+    """The literal is public-looking; only resolution reveals the private IP."""
+    resolver = _fake_resolver({"proxy.evil.example": "10.1.2.3"})
+    with patch.object(url_safety.socket, "getaddrinfo", side_effect=resolver):
+        with pytest.raises(url_safety.URLSafetyError, match="non-public IP 10.1.2.3"):
+            url_safety._assert_proxy_host_is_public("proxy.evil.example")
+
+
+def test_validated_proxy_hosts_is_empty_without_a_proxy(monkeypatch) -> None:
+    _system_proxies(monkeypatch, {})
+    assert url_safety._validated_proxy_hosts("https://example.com/") == frozenset()
+
+
+def _run_safe_get_with_proxy(monkeypatch, proxy_url: str, resolves: dict):
+    """Drive safe_requests_get with a pinned environment proxy, capturing the
+    exempt set handed to _pin_dns. Returns that captured dict."""
+    captured: dict = {}
+    _system_proxies(monkeypatch, {"https": proxy_url})
+    monkeypatch.delenv("NO_PROXY", raising=False)
+    monkeypatch.delenv("no_proxy", raising=False)
+
+    @contextmanager
+    def fake_pin(hostname: str, pinned_ip: str, port: int, exempt_hosts=frozenset()):
+        captured["exempt"] = exempt_hosts
+        yield
+
+    with patch.object(
+        url_safety.socket, "getaddrinfo", side_effect=_fake_resolver(resolves)
+    ), patch.object(
+        url_safety, "_pin_dns", side_effect=fake_pin
+    ), patch.object(
+        url_safety.requests, "get", return_value=SimpleNamespace(status_code=200)
+    ):
+        captured["response"] = url_safety.safe_requests_get(
+            "https://example.com/", timeout=5
+        )
+    return captured
+
+
+def test_safe_requests_get_exempts_a_public_proxy(monkeypatch) -> None:
+    """Positive control: a proxy on a public address is still exempted, so the
+    #280 fix keeps working for a real corporate proxy."""
+    captured = _run_safe_get_with_proxy(
+        monkeypatch,
+        "http://proxy.corp.example:8080",
+        {"example.com": "93.184.216.34", "proxy.corp.example": "8.8.4.4"},
+    )
+    assert captured["exempt"] == frozenset({"proxy.corp.example"})
+    assert captured["response"].status_code == 200
+
+
+@pytest.mark.parametrize(
+    "proxy_url",
+    ["http://169.254.169.254:3128", "http://127.0.0.1:8080"],
+)
+def test_safe_requests_get_refuses_a_non_public_proxy(monkeypatch, proxy_url) -> None:
+    """Negative control: the exemption must never be granted to a proxy on
+    loopback or at a metadata address. Before this check, setting HTTPS_PROXY
+    was enough to read cloud metadata through every audit."""
+    _system_proxies(monkeypatch, {"https": proxy_url})
+    monkeypatch.delenv("NO_PROXY", raising=False)
+    monkeypatch.delenv("no_proxy", raising=False)
+
+    resolver = _fake_resolver({"example.com": "93.184.216.34"})
+    with patch.object(url_safety.socket, "getaddrinfo", side_effect=resolver):
+        with pytest.raises(
+            url_safety.URLSafetyError, match="Refusing configured HTTP proxy"
+        ):
             url_safety.safe_requests_get("https://example.com/", timeout=5)
-    assert "url_safety: refused to resolve" not in str(excinfo.value)
+
+
+def test_safe_requests_session_refuses_a_non_public_proxy(monkeypatch) -> None:
+    _system_proxies(monkeypatch, {"https": "http://127.0.0.1:8080"})
+    monkeypatch.delenv("NO_PROXY", raising=False)
+    monkeypatch.delenv("no_proxy", raising=False)
+
+    resolver = _fake_resolver({"example.com": "93.184.216.34"})
+    with patch.object(url_safety.socket, "getaddrinfo", side_effect=resolver):
+        with pytest.raises(
+            url_safety.URLSafetyError, match="Refusing configured HTTP proxy"
+        ):
+            with url_safety.safe_requests_session("https://example.com/"):
+                pass

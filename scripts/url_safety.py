@@ -373,6 +373,89 @@ def _proxy_hosts(url: str, proxies: Optional[dict] = None) -> frozenset:
     return frozenset({host.lower()}) if host else frozenset()
 
 
+def _assert_proxy_host_is_public(host: str) -> str:
+    """Resolve one configured proxy host and refuse it unless it is public.
+
+    The exemption in :func:`_pin_dns` removes a proxy host from the
+    fall-through validation, so without this check anything the environment
+    can set (``HTTPS_PROXY``, ``ALL_PROXY``, a stray ``.bashrc`` export, a
+    hostile devcontainer image) would become an unvalidated egress target.
+    ``HTTPS_PROXY=http://169.254.169.254:3128`` would turn every audit into a
+    cloud-metadata read.
+
+    The proxy therefore goes through exactly the same policy as an audit
+    target: the hostname blocklist, then :func:`is_safe_ip` on every resolved
+    address across both families. Loopback, RFC 1918, RFC 6598, link-local,
+    and the metadata endpoints are refused with a message that names the
+    address, rather than being silently exempted.
+
+    Returns the normalized hostname. Raises ``URLSafetyError`` otherwise.
+    """
+    normalized = normalize_hostname(host)
+    hint = (
+        "Point the proxy environment variable at a publicly routable "
+        "address, or unset it."
+    )
+    if normalized in _BLOCKED_HOSTNAMES:
+        raise URLSafetyError(
+            f"Refusing configured HTTP proxy {host!r}: blocked hostname "
+            f"{normalized}. {hint}"
+        )
+
+    try:
+        literal = ipaddress.ip_address(normalized)
+    except ValueError:
+        literal = None
+
+    if literal is not None:
+        if not is_safe_ip(normalized):
+            raise URLSafetyError(
+                f"Refusing configured HTTP proxy {host!r}: non-public "
+                f"address {normalized}. {hint}"
+            )
+        return normalized
+
+    try:
+        addrinfo = socket.getaddrinfo(
+            normalized,
+            None,
+            family=socket.AF_UNSPEC,
+            type=socket.SOCK_STREAM,
+        )
+    except (socket.gaierror, UnicodeError) as exc:
+        raise URLSafetyError(
+            f"Refusing configured HTTP proxy {host!r}: DNS resolution "
+            f"failed ({exc}). {hint}"
+        ) from exc
+
+    resolved_ips = sorted({info[4][0] for info in addrinfo if info[4]})
+    if not resolved_ips:
+        raise URLSafetyError(
+            f"Refusing configured HTTP proxy {host!r}: no address records. "
+            f"{hint}"
+        )
+    for ip_str in resolved_ips:
+        if not is_safe_ip(ip_str):
+            raise URLSafetyError(
+                f"Refusing configured HTTP proxy {host!r}: it resolves to "
+                f"non-public IP {ip_str}. {hint}"
+            )
+    return normalized
+
+
+def _validated_proxy_hosts(url: str, proxies: Optional[dict] = None) -> frozenset:
+    """The proxy hosts to exempt from the pinned scope, each policy-checked.
+
+    Thin wrapper over :func:`_proxy_hosts` and
+    :func:`_assert_proxy_host_is_public`. Must be called *before* entering
+    :func:`_pin_dns`, so the resolution it performs goes through the real
+    resolver rather than the patched one.
+    """
+    return frozenset(
+        _assert_proxy_host_is_public(host) for host in _proxy_hosts(url, proxies)
+    )
+
+
 # A single non-blocking lock guards the global getaddrinfo monkey-patch.
 # This is a deliberate choice: claude-seo scripts run one URL fetch at a
 # time, and we'd rather raise loudly than silently corrupt resolver state
@@ -395,12 +478,15 @@ def _pin_dns(
     which ``requests`` surfaces as ``ConnectionError`` — the caller's
     existing error path.
 
-    ``exempt_hosts`` are resolved by the real resolver without validation.
-    It carries the configured HTTP proxy, if any (see :func:`_proxy_hosts`):
-    the proxy is the process's own egress and commonly sits on loopback, so
-    refusing it refused every fetch. Behind a CONNECT proxy the target is
-    resolved by the proxy, and :func:`validate_url_strict`'s pre-flight
-    check remains the guard for it.
+    ``exempt_hosts`` are resolved by the real resolver without the
+    fall-through check. It carries the configured HTTP proxy, if any: the
+    proxy is the process's own egress, and requests must resolve it to open
+    the tunnel, which the fall-through check otherwise refused. Callers pass
+    :func:`_validated_proxy_hosts`, which has already put that host through
+    the hostname blocklist and :func:`is_safe_ip`, so a proxy on loopback or
+    at a metadata address never reaches this set. Behind a CONNECT proxy the
+    target is resolved by the proxy, and :func:`validate_url_strict`'s
+    pre-flight check remains the guard for it.
 
     The fall-through validation is the v2 fix for redirect-target DNS
     rebinding: ``requests.Session.get(allow_redirects=True)`` may follow
@@ -483,7 +569,7 @@ def safe_requests_get(
     parsed = urlparse(norm_url)
     port = parsed.port or (443 if parsed.scheme == "https" else 80)
     assert parsed.hostname is not None  # validate_url_strict guarantees this
-    exempt = _proxy_hosts(norm_url, kwargs.get("proxies"))
+    exempt = _validated_proxy_hosts(norm_url, kwargs.get("proxies"))
     with _pin_dns(parsed.hostname, pinned_ip, port, exempt_hosts=exempt):
         return requests.get(norm_url, timeout=timeout, **kwargs)
 
@@ -504,7 +590,7 @@ def safe_requests_head(
     parsed = urlparse(norm_url)
     port = parsed.port or (443 if parsed.scheme == "https" else 80)
     assert parsed.hostname is not None
-    exempt = _proxy_hosts(norm_url, kwargs.get("proxies"))
+    exempt = _validated_proxy_hosts(norm_url, kwargs.get("proxies"))
     with _pin_dns(parsed.hostname, pinned_ip, port, exempt_hosts=exempt):
         return requests.head(norm_url, timeout=timeout, **kwargs)
 
@@ -521,7 +607,7 @@ def safe_requests_session(url: str) -> Iterator[requests.Session]:
     port = parsed.port or (443 if parsed.scheme == "https" else 80)
     assert parsed.hostname is not None
     session = requests.Session()
-    exempt = _proxy_hosts(norm_url, session.proxies)
+    exempt = _validated_proxy_hosts(norm_url, session.proxies)
     with _pin_dns(parsed.hostname, pinned_ip, port, exempt_hosts=exempt):
         try:
             yield session
