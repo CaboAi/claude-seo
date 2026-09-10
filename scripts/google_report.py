@@ -1129,14 +1129,21 @@ def _build_full_audit_categories(data, section_num=2):
             lines.append('  <h4>Findings</h4>')
             for finding in findings:
                 title = escape(_finding_title(finding))
-                severity = escape(_finding_severity(finding))
                 desc = escape(_finding_description(finding))
                 recommendation = ""
                 if isinstance(finding, dict) and finding.get("recommendation"):
                     recommendation = escape(str(finding["recommendation"]))
-                severity_class = _rating_css_class(severity)
                 lines.append('  <div class="action-item medium">')
-                lines.append(f'    <h4>{title} <span class="{severity_class}">{severity}</span></h4>')
+                # Only label a severity when the finding actually carries one. Plain-string
+                # findings have no severity, and _finding_severity() falls back to "Info" --
+                # which would badge every entry as "Info" (see the executive-summary fix for
+                # the same shape). Dict-shaped findings with an explicit severity keep it.
+                if isinstance(finding, dict) and finding.get("severity"):
+                    severity = escape(str(finding["severity"]))
+                    severity_class = _rating_css_class(severity)
+                    lines.append(f'    <h4>{title} <span class="{severity_class}">{severity}</span></h4>')
+                else:
+                    lines.append(f'    <h4>{title}</h4>')
                 if desc:
                     lines.append(f'    <p>{desc}</p>')
                 if recommendation:
@@ -1268,9 +1275,15 @@ def _build_executive_summary(domain, timestamp, data, report_type):
     # Critical issues box
     issues = []
     for item in _coerce_items(summary.get("top_findings")):
-        severity = _finding_severity(item)
         title = _finding_title(item)
-        issues.append(f'<strong>{escape(severity)}:</strong> {escape(title)}')
+        # Only label a severity when the finding actually carries one. Plain-string
+        # top_findings (the shape documented in seo-audit/SKILL.md) have no severity, and
+        # _finding_severity() falls back to "Info" -- which rendered every entry in the
+        # "Critical Issues Found" box as "Info:", understating the whole section.
+        if isinstance(item, dict) and item.get("severity"):
+            issues.append(f'<strong>{escape(str(item["severity"]))}:</strong> {escape(title)}')
+        else:
+            issues.append(escape(title))
 
     failed_audits = mobile.get("failed_audits", [])
     if failed_audits:

@@ -15,6 +15,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Africa, and Turkiye (2026-09-08), AI Mode adds travel booking and price tracking
   (2026-08-27), and the CrUX pass-rate figure moves to the August 2026 dataset.
 
+### Fixed
+
+- The JSON-LD hook now validates every `application/ld+json` block regardless of
+  attribute order, CSP `nonce`, `id` or `data-*` attributes, tag case, or an
+  unquoted type value; such blocks were previously skipped without validation.
+- The JSON-LD hook no longer reports runtime template expressions (JSX, Vue,
+  Svelte, template literals in component files; PHP and EJS everywhere) as
+  invalid JSON, while a malformed literal in plain HTML is still reported.
+- The JSON-LD hook accepts the schema.org `@context` with a trailing slash, in
+  list form, and in `{"@vocab": ...}` object form.
+- `google_report.py` no longer labels a plain-string finding as "Info" in the
+  executive summary's critical-issues box or in the full-audit category
+  findings; the "Info" prefix/badge now appears only when the finding is a
+  dict that carries an explicit `severity`.
+- `parse_html.py` now detects `rel="canonical"` and `rel="alternate"`
+  (hreflang) `<link>` tags case-insensitively, so `rel="Alternate"` or
+  `REL="Canonical"` are no longer silently dropped. Credit to #269 for the
+  report that prompted this investigation.
+
+
 ## [2.2.6] - 2026-09-10
 
 ### Security
