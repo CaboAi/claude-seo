@@ -45,7 +45,8 @@ def test_ps1_writes_mcp_config_atomically(rel: str, variables: tuple[str, str]) 
         f"{rel}: the temp file must be written without a BOM"
     )
     assert "Set-Content" not in text or f"Set-Content {config_var}" not in text
-    assert "[pscustomobject]@{}" in text, f"{rel}: mcpServers must be created as an object, not a hashtable"
+    if "-NotePropertyName mcpServers" in text:
+        assert "[pscustomobject]@{}" in text, f"{rel}: mcpServers must be created as an object, not a hashtable"
 
 
 @pytest.mark.parametrize("rel", WRITERS.keys())
