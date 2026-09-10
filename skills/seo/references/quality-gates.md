@@ -100,14 +100,16 @@ Google's doorway page algorithm penalizes programmatic location pages with thin/
 | Not a title restatement | Must not open by repeating the title tag verbatim |
 
 > **Templated metadata gate.** "Unique per page" is necessary but not
-> sufficient: 26 descriptions can each be unique strings while all sharing one
-> generated shape. Opening with the page title and closing on a stock CTA
-> ("Try it free now.", "Start free!") is that shape, and site-wide it reads as
-> scaled content abuse under Google's spam policies even when the body copy is
-> entirely original. Check with
-> `claude-seo run metadata_template.py --pairs-file <file> --json`. The CTA
-> requirement above means a CTA written for this page, not one appended to every
-> page by a template.
+> sufficient: many descriptions can each be unique strings while all sharing
+> one generated shape. Opening with the page title and closing on a stock CTA
+> ("Try it free now.", "Start free!") is that shape, and duplicated or
+> templated metadata site-wide is a documented content-quality problem even
+> when the body copy is entirely original; this heuristic check does not
+> claim any specific Google ranking or spam update targeted this pattern.
+> Check with
+> `"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run metadata_template.py --pairs-file <file> --json`.
+> The CTA requirement above means a CTA written for this page, not one
+> appended to every page by a template.
 
 ---
 

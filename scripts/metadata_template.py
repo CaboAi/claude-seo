@@ -11,10 +11,13 @@ Why this matters
 ================
 Bulk metadata jobs (a CSV column piped into a template, an LLM asked for
 "a description for each of these titles") emit that exact shape across
-every page of a site at once. Under Google's spam policies and QRG
-§4.6.5, site-wide templated metadata reads as scaled content abuse, and
-it does so **independently of body-copy quality** — a site whose article
-text is entirely original can still be demoted on the metadata alone.
+every page of a site at once. Duplicated or templated metadata is a
+documented content-quality problem: Google's Quality Rater Guidelines
+§4.6.5 describes scaled content abuse in general terms, and site-wide
+templated metadata fits that description independently of body-copy
+quality. This tool does not claim that templated metadata caused, or was
+specifically targeted by, any particular Google ranking or spam update;
+it flags a documented quality pattern, nothing more.
 
 Existing content checks do not catch this. ``content_quality.py`` scores
 body text; the ``seo-programmatic`` uniqueness gate measures unique body
@@ -60,11 +63,14 @@ Output (JSON when ``--json`` is set)::
       "templated_ratio":  0.0..1.0,
       "shared_cta_phrases": {"try it free now": 26},
       "site_flags":       ["site-wide-templated-metadata", ...],
-      "site_risk":        "high" | "medium" | "low"
+      "site_risk":        "high" | "medium" | "low",
+      "method":           "heuristic"
     }
 
 A single pair scores as one page; ``--pairs-file`` scores a whole site,
-which is the unit the spam signal actually operates on.
+which is the unit this quality problem is actually visible at. ``method``
+is always ``"heuristic"``: four deterministic string comparisons, no
+model, no inference about who or what wrote the metadata.
 """
 
 from __future__ import annotations
@@ -195,8 +201,9 @@ def analyse(title: str, description: str, url: str | None = None) -> dict:
                 "templated_metadata", "high",
                 "Meta description repeats the title verbatim and then closes with a "
                 "stock call to action. Bulk metadata jobs emit this shape on every "
-                "page at once, and site-wide templated metadata reads as scaled "
-                "content abuse even when the body copy is original.",
+                "page at once, and duplicated or templated metadata site-wide is a "
+                "documented content-quality problem even when the body copy is "
+                "original.",
                 "Rewrite the description to say what the title does not: what the page "
                 "does, for whom, and what makes it different. 150-160 characters, no "
                 "stock CTA.",
@@ -253,8 +260,9 @@ def analyse_pairs(pairs: Iterable[dict]) -> dict:
 
     ``pairs`` yields mappings with ``title`` and ``description`` keys and
     an optional ``url``. The site view is the operational unit: one
-    templated description is an oversight, the same shape on a third of
-    the site is the pattern Google's spam systems act on.
+    templated description is an oversight, the same shape across a third
+    of the site is the pattern worth flagging as a site-wide quality
+    problem.
     """
     pages = [
         analyse(p.get("title", ""), p.get("description", ""), p.get("url"))
@@ -292,6 +300,9 @@ def analyse_pairs(pairs: Iterable[dict]) -> dict:
         "shared_cta_phrases": shared,
         "site_flags": site_flags,
         "site_risk": site_risk,
+        # Deterministic string comparison, no model, no inference about
+        # authorship. Always "heuristic": this is not a Google-verified verdict.
+        "method": "heuristic",
     }
 
 
@@ -358,6 +369,7 @@ def main() -> int:
         json.dump(result, sys.stdout, indent=2)
         sys.stdout.write("\n")
     else:
+        print(f"Method:          {result['method']} (deterministic string comparison, no model)")
         print(f"Pages checked:   {result['pages_checked']}")
         print(f"Templated pages: {result['templated_count']} "
               f"({result['templated_ratio']:.0%})")

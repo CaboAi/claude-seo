@@ -1,10 +1,12 @@
 """
 Tests for scripts/metadata_template.py — the templated-metadata detector.
 
-The true-positive corpus is the real metadata that got a live site demoted
-by the June 2026 spam update for scaled content abuse: a bulk CSV metadata
-job wrote a description for every page that restates the page title and
-then appends a stock CTA.
+The true-positive corpus is real metadata observed on a live site: a bulk
+CSV metadata job wrote a description for every page that restates the page
+title and then appends a stock CTA. Duplicated or templated metadata is a
+documented content-quality problem (see QRG §4.6.5 on scaled content); this
+detector does not claim, and these tests do not assert, that any specific
+Google ranking update targeted or was caused by this pattern.
 
 The false-positive corpus is the harder half. Every entry is legitimate
 metadata that a naive "description contains the title" rule would flag —
@@ -27,7 +29,6 @@ if _SCRIPTS not in sys.path:
     sys.path.insert(0, _SCRIPTS)
 
 import metadata_template  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # True positives: templated title + description pairs
@@ -359,3 +360,33 @@ def test_pairs_file_accepts_parse_html_meta_description_key(tmp_path) -> None:
     proc = _run_cli("--pairs-file", str(path), "--json")
     assert proc.returncode == 0, proc.stderr
     assert json.loads(proc.stdout)["templated_count"] == 1
+
+
+def test_json_output_reports_heuristic_method() -> None:
+    """This is a deterministic string-comparison heuristic, not a model
+    verdict and not a claim about any specific Google ranking update."""
+    title, description = _TEMPLATED_PAIRS[0]
+    result = metadata_template.analyse_pairs([{"title": title, "description": description}])
+    assert result["method"] == "heuristic"
+
+
+def test_human_output_names_the_method_as_heuristic() -> None:
+    title, description = _TEMPLATED_PAIRS[0]
+    proc = _run_cli("--title", title, "--description", description)
+    assert proc.returncode in (0, 1), proc.stderr
+    assert "heuristic" in proc.stdout.lower()
+
+
+def test_findings_do_not_claim_a_specific_spam_update_caused_or_targeted_this() -> None:
+    """Regression guard: no finding message may assert that templated
+    metadata caused, or was specifically targeted by, a named Google
+    ranking or spam update. Duplicated/templated metadata is a documented
+    quality problem (QRG scaled-content-abuse category); this tool makes
+    no claim beyond that."""
+    title, description = _TEMPLATED_PAIRS[0]
+    result = metadata_template.analyse(title, description)
+    for signal in result["signals"]:
+        text = (signal["message"] + " " + signal["recommendation"]).lower()
+        assert "spam update" not in text
+        assert "2026 spam" not in text
+        assert "demoted" not in text

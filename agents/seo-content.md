@@ -21,22 +21,25 @@ When given content to analyze:
 
 ## Templated Metadata
 
-Body-copy uniqueness does not clear a site of scaled content abuse. Metadata is
+Body-copy uniqueness does not clear a site of duplicated or templated
+metadata, a documented content-quality problem in its own right. Metadata is
 generated in bulk far more often than body copy is, and a description that
 restates its own title and then appends a stock CTA is the shape those jobs
-produce on every URL at once.
+produce on every URL at once. This is a heuristic check (deterministic
+string comparison, no model); it does not claim any specific Google ranking
+or spam update targeted this pattern.
 
 Single page:
 
 ```
-claude-seo run metadata_template.py --title "<title>" --description "<desc>" --json
+"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run metadata_template.py --title "<title>" --description "<desc>" --json
 ```
 
 Site-wide, which is the unit that matters, pass a JSON list of
 `{url, title, description}` objects collected while crawling:
 
 ```
-claude-seo run metadata_template.py --pairs-file metadata.json --json
+"${CLAUDE_PLUGIN_ROOT}/scripts/claude-seo" run metadata_template.py --pairs-file metadata.json --json
 ```
 
 Report `site_risk`, `templated_ratio`, and any `shared_cta_phrases`: the same
