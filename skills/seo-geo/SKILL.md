@@ -326,6 +326,33 @@ Google added many AI citation/source surfaces across AI Overviews **and** AI Mod
 
 **Search agents (live, not just WebMCP):** Google's "Information Agents" run in the background to monitor topics, plus agentic booking/calling for select categories (announced at I/O 2026 for a summer US rollout; Information Agents start with AI Pro and Ultra subscribers; confirm current availability before promising it), so agent-friendly-page optimization (real interactive elements, accessibility tree, layout stability) now matters for actions, not only citations. Audit that with `/seo agentic` (the `seo-agentic` sub-skill), which also reads Lighthouse's Agentic Browsing fraction.
 
+### AI-engine index coverage (measure, don't assume)
+
+An AI assistant can only cite a page that its search backend has indexed. Each
+assistant leans on a different index, so a site that is well indexed in Google
+can still be invisible to ChatGPT or Claude. Measure coverage per engine in
+every GEO analysis and full audit; never infer it from Google data alone.
+
+| Assistant | Search backend it draws on | How to measure | Fixes when coverage is low |
+|-----------|---------------------------|----------------|----------------------------|
+| Gemini, Google AI Overviews / AI Mode | Google index | Search Console page indexing report; `site:domain` on Google as a rough cross-check | Sitemap submitted in GSC, URL Inspection requests, fix crawl/canonical issues |
+| ChatGPT search, Microsoft Copilot | Bing is one confirmed third-party provider for ChatGPT search (OpenAI, 2024); Copilot uses Bing | `site:domain` on bing.com; Bing Webmaster Tools indexed-pages count if the owner has access | Bing Webmaster Tools verification + sitemap submit, IndexNow key file and post-deploy ping, Bing Places for local businesses |
+| Claude (web search) | Brave Search (listed as an Anthropic subprocessor since 2025-03-19) | `site:domain` on search.brave.com | No submission tool exists: earn links and mentions from pages Brave already indexes, keep sitemap and robots.txt open, make sure pages render server-side |
+| Perplexity | Own crawler (PerplexityBot) plus third-party sources | `site:domain` query inside Perplexity; check PerplexityBot is allowed | Allow PerplexityBot, strengthen community/third-party mentions |
+
+Report the measured count for each engine next to the number of URLs in the
+sitemap (for example "Bing: 0 of 54"). **Severity rule:** if an engine indexes
+less than about half of the sitemap URLs, or none of the money pages
+(homepage, pricing, service pages), the fixes in that row are **High**, not Low.
+IndexNow on its own is a minor technical item; IndexNow when Bing shows zero
+pages is a visibility blocker for ChatGPT. Search operators are approximate, so
+say "approximate" and record the date checked.
+
+For a local service business, also flag as High when missing: real customer
+reviews quoted as crawlable text on the site (not only on GBP), and a city or
+service-area page in each language the business serves. AI assistants answer
+"best X in <city>" from pages that name the city and show third-party proof.
+
 ---
 
 ## Google Update Correlation
@@ -346,13 +373,14 @@ Generate `GEO-ANALYSIS.md` with:
    `ClaudeBot`, `Applebot-Extended`) and search citability (`OAI-SearchBot`,
    `Googlebot`, `PerplexityBot`, `Claude-SearchBot`, `Applebot`) are distinct
    findings and must never be merged into one line.
-4. **llms.txt Status** (present, missing, recommendations)
-5. **Brand Mention Analysis** (presence on Wikipedia, Reddit, YouTube, LinkedIn)
-6. **Passage-Level Citability** (self-contained answer blocks identified; ~130-170 words is a heuristic, not a Google rule)
-7. **Server-Side Rendering Check** (JavaScript dependency analysis)
-8. **Top 5 Highest-Impact Changes**
-9. **Schema Recommendations** (for AI discoverability)
-10. **Content Reformatting Suggestions** (specific passages to rewrite)
+4. **AI-Engine Index Coverage** -- measured pages indexed on Google, Bing and Brave versus sitemap URLs, with the date checked and the severity rule applied (see "AI-engine index coverage")
+5. **llms.txt Status** (present, missing, recommendations)
+6. **Brand Mention Analysis** (presence on Wikipedia, Reddit, YouTube, LinkedIn)
+7. **Passage-Level Citability** (self-contained answer blocks identified; ~130-170 words is a heuristic, not a Google rule)
+8. **Server-Side Rendering Check** (JavaScript dependency analysis)
+9. **Top 5 Highest-Impact Changes**
+10. **Schema Recommendations** (for AI discoverability)
+11. **Content Reformatting Suggestions** (specific passages to rewrite)
 
 ---
 

@@ -60,6 +60,15 @@ cohere-ai
 
 Only 11% of domains are cited by both ChatGPT and Google AI Overviews, so platform optimization matters.
 
+## AI-Engine Index Coverage
+
+Measure, never assume, how much of the sitemap each AI assistant's search backend has indexed:
+- Google (Gemini, AI Overviews, AI Mode): GSC page indexing, or `site:domain` on Google.
+- Bing (one confirmed provider for ChatGPT search; Copilot): `site:domain` on bing.com.
+- Brave (Claude web search): `site:domain` on search.brave.com.
+
+Report "engine: indexed / sitemap URLs (approximate, date checked)". If an engine shows under about half the sitemap or none of the money pages, its fixes (Bing Webmaster Tools + IndexNow + Bing Places; Brave via mentions and links) are High priority. Follow the full rule in the seo-geo skill.
+
 ## DataForSEO Integration (Optional)
 
 If DataForSEO MCP tools are available, use `ai_optimization_chat_gpt_scraper` for live ChatGPT visibility and `ai_opt_llm_ment_search` for LLM mention tracking.
@@ -69,6 +78,7 @@ If DataForSEO MCP tools are available, use `ai_optimization_chat_gpt_scraper` fo
 Provide a structured report with:
 - GEO Readiness Score (0-100) with dimension breakdown
 - AI Crawler Access Status (allowed/blocked per crawler)
+- AI-engine index coverage (Google, Bing, Brave: indexed vs sitemap URLs, date checked)
 - llms.txt status (present/missing/malformed)
 - Brand mention analysis (Wikipedia, Reddit, YouTube, LinkedIn)
 - Top 5 highest-impact changes with effort estimates

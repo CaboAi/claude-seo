@@ -24,7 +24,7 @@ metadata:
    - `seo-sitemap` -- structure analysis, quality gates, missing pages
    - `seo-performance` -- LCP, INP, CLS measurements
    - `seo-visual` -- screenshots, mobile testing, above-fold analysis
-   - `seo-geo` -- AI crawler access, llms.txt, citability, brand mention signals
+   - `seo-geo` -- AI crawler access, llms.txt, citability, brand mention signals, and AI-engine index coverage (measured pages indexed on Google, Bing and Brave versus the sitemap; always include in full audits)
    - `seo-agentic` -- Lighthouse Agentic Browsing fraction (X/N), accessibility tree for agents, AI agent access policy, Markdown and discovery files, WebMCP (always include in full audits; its findings feed AI Search Readiness)
    - `seo-local` -- GBP signals, NAP consistency, reviews, local schema, industry-specific local factors (spawn when Local Service industry detected: brick-and-mortar, SAB, or hybrid business type)
    - `seo-maps` -- Geo-grid rank tracking, GBP audit, review intelligence, competitor radius mapping (spawn when Local Service detected AND DataForSEO MCP available)
@@ -155,6 +155,7 @@ Write `{domain}-audit/audit-data.json` with this shape so `"${CLAUDE_PLUGIN_ROOT
 - Format recommendations
 
 ### AI Search Readiness
+- AI-engine index coverage table: engine, the assistants it feeds, indexed vs sitemap URLs, date checked
 - Citability score
 - Structural improvements
 - Authority signals
@@ -165,6 +166,8 @@ Write `{domain}-audit/audit-data.json` with this shape so `"${CLAUDE_PLUGIN_ROOT
 - **High**: Significantly impacts rankings (fix within 1 week)
 - **Medium**: Optimization opportunity (fix within 1 month)
 - **Low**: Nice to have (backlog)
+
+Do not file an item as Low because it looks small. Rank by measured impact: when an AI engine indexes under about half the sitemap URLs (or none of the money pages), its fixes are High even if each is a quick task (for example IndexNow or Bing Webmaster Tools when Bing shows zero pages). For a local service business, missing on-site reviews and a missing city or service-area page are High.
 
 ## DataForSEO Integration (Optional)
 
