@@ -1,0 +1,38 @@
+name: Sync Fork with Upstream
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Sync fork with upstream
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PARENT=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.parent.full_name // empty')
+          BRANCH=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.default_branch')
+
+          if [ -z "$PARENT" ]; then
+            echo "Not a fork — nothing to sync."
+            exit 0
+          fi
+
+          echo "Syncing $GITHUB_REPOSITORY@$BRANCH from upstream $PARENT"
+
+          # Server-side sync. GITHUB_TOKEN cannot update .github/workflows/*
+          # files, so this returns 422 whenever upstream changed a workflow
+          # file; that is reported as a warning, not a job failure.
+          if OUT=$(gh api --method POST "repos/$GITHUB_REPOSITORY/merge-upstream" \
+                     -f branch="$BRANCH" 2>&1); then
+            echo "$OUT"
+          else
+            echo "$OUT"
+            echo "::warning::Upstream sync skipped — branch diverged or conflicts with upstream. Resolve manually."
+          fi
