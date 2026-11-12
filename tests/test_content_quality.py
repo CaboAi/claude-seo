@@ -61,6 +61,22 @@ def test_content_quality_filler_heavy_text_scores_low() -> None:
     assert result["ai_pattern_score"] >= 40
 
 
+def test_longer_filler_phrase_is_not_scored_twice() -> None:
+    """``let's dive in`` is a prefix of ``let's dive into``. One sentence
+    must not count as both, which pushes filler_score from 25 to 50 and
+    raises the filler flag.
+    """
+    text = "Let's dive into the details of this topic today. " * 40
+    result = content_quality.analyse(text)
+    assert result["matches"]["filler"] == ["let's dive into"]
+    assert result["filler_score"] == 25
+    assert "filler" not in result["flags"]
+
+    shorter = "Let's dive in and review the details of this topic today. " * 40
+    short_result = content_quality.analyse(shorter)
+    assert short_result["matches"]["filler"] == ["let's dive in"]
+
+
 def test_content_quality_rich_content_scores_high() -> None:
     # 300+ tokens with specific numbers, named entities, no filler.
     text = (
@@ -312,6 +328,71 @@ def test_verify_empty_text_returns_zero_claims() -> None:
     assert result["uncited_ratio"] == 0.0
 
 
+def test_verify_detects_a_bare_percentage_statistic() -> None:
+    # A bare percentage not followed by "of ..." is the canonical unsourced
+    # statistic this tool exists to flag. A trailing \b after "%" in the
+    # pattern could never match (a percentage is followed by a space or
+    # punctuation, both non-word), so these claims were silently missed.
+    for text in ("The bounce rate hit 85%.", "Conversions rose by 30% overall.",
+                 "Prices rose 3.5% this quarter."):
+        result = content_verify.verify(text)
+        assert result["claim_count"] == 1, text
+        assert result["claims"][0]["kind"] == "statistic", text
+
+
+def test_verify_bare_percentage_does_not_double_count_percent_of() -> None:
+    # "47% of marketers" must still be one claim, not two (the longer
+    # "% of ..." match wins over the bare-"%" match on the same span).
+    result = content_verify.verify("47% of marketers report gains.")
+    assert result["claim_count"] == 1
+
+
+def test_verify_standalone_per_followed_by_a_common_word_is_not_a_citation() -> None:
+    # The citation pattern requires "per" + a Proper Noun, but re.IGNORECASE
+    # made the [A-Z] anchor match lowercase too, so "per week" and "per page"
+    # were counted as citations. A claim near such a phrase was then wrongly
+    # reported as cited.
+    result = content_verify.verify("Fully 80% of users churned, measured per week.")
+    assert result["claim_count"] == 1
+    claim = result["claims"][0]
+    assert claim["has_citation"] is False
+    assert result["uncited_count"] == 1
+
+
+def test_verify_per_followed_by_a_proper_noun_is_still_a_citation() -> None:
+    result = content_verify.verify("Fully 80% of users churned, per Gartner.")
+    assert result["claims"][0]["has_citation"] is True
+
+
+@pytest.mark.parametrize(
+    "attribution",
+    [
+        "according to a Stanford study",
+        "according to the CDC",
+        "Source: https://example.org/x",
+        "(source: internal survey)",
+        "cited by the World Bank",
+        "via: nielsen.com",
+    ],
+)
+def test_verify_attribution_prefixes_count_without_a_capitalised_next_word(
+    attribution: str,
+) -> None:
+    # Only "per" needs a capitalised next word. The other attribution forms
+    # are citations whatever follows them: an article, a URL, a lowercase
+    # domain or a bracketed lowercase "source:".
+    result = content_verify.verify(f"Fully 80% of users churned, {attribution}.")
+    assert result["claims"][0]["kind"] == "statistic"
+    assert result["claims"][0]["has_citation"] is True, attribution
+
+
+def test_verify_per_is_case_insensitive_but_its_proper_noun_is_not() -> None:
+    cited = content_verify.verify("Fully 80% of users churned. Per Gartner.")
+    assert cited["claims"][0]["has_citation"] is True
+    uncited = content_verify.verify("Fully 80% of users churned. Per week.")
+    assert uncited["claims"][0]["has_citation"] is False
+
+
 # ---------------------------------------------------------------------------
 # seo_updates
 # ---------------------------------------------------------------------------
@@ -433,6 +514,35 @@ def test_seo_updates_filter_by_year() -> None:
     data = seo_updates._load()
     since_2025 = seo_updates._filter(data["updates"], since="2025")
     assert all(u["date"] >= "2025-01-01" for u in since_2025)
+
+
+def test_seo_updates_since_accepts_a_non_zero_padded_month() -> None:
+    # "2025-9" is 6 chars, so the old length-based dispatch fell through to
+    # date.fromisoformat("2025-9") and raised ValueError. A non-padded month
+    # is unambiguous September and must filter the same as "2025-09".
+    data = seo_updates._load()
+    padded = seo_updates._filter(data["updates"], since="2025-09")
+    unpadded = seo_updates._filter(data["updates"], since="2025-9")
+    assert [u["date"] for u in unpadded] == [u["date"] for u in padded]
+
+
+def test_seo_updates_parse_since_rejects_garbage_cleanly() -> None:
+    # An out-of-range month (length 7, so it used to reach date(2025, 13, 1)
+    # and crash) and non-date text both raise a clear ValueError.
+    for bad in ("2025-13", "garbage", "2025-02-30"):
+        with pytest.raises(ValueError):
+            seo_updates._parse_since(bad)
+
+
+def test_seo_updates_cli_reports_a_bad_since_without_a_traceback() -> None:
+    script = Path(__file__).resolve().parents[1] / "scripts" / "seo_updates.py"
+    result = subprocess.run(
+        [sys.executable, str(script), "--since", "2025-13", "--json"],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 2
+    assert "Traceback" not in result.stderr
+    assert "invalid --since" in result.stderr
 
 
 def test_seo_updates_cli_accepts_every_known_kind() -> None:
